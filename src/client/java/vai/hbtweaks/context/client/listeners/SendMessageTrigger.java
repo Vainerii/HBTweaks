@@ -5,9 +5,9 @@ import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import vai.hbtweaks.context.client.mixin.ChatScreenAccessor;
-import vai.mousepointerapi.events.MouseTrackerEntityClickUpCallback;
-import vai.mousepointerapi.util.ClickType;
-import vai.mousepointerapi.util.ScreenType;
+import vai.hbtweaks.context.client.mouse.MouseTrackerEntityClickUpCallback;
+import vai.hbtweaks.context.client.mouse.ClickType;
+import vai.hbtweaks.context.client.mouse.ScreenType;
 
 import java.util.List;
 

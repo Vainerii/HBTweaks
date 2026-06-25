@@ -2,13 +2,18 @@ package vai.hbtweaks.context.client.contextmenu;
 
 import java.util.List;
 
+import net.minecraft.util.Util;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
+import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import vai.hbtweaks.context.HBTweaksContext;
 import vai.hbtweaks.context.client.listeners.ContextMenuTrigger;
 
@@ -88,6 +93,32 @@ public class ContextMenu {
         return this;
     }
 
+    public ContextMenu addItemStackItem(ItemStack stack) {
+        this.items.add(new ItemStackMenuItem(stack));
+        recalcWidth();
+        return this;
+    }
+
+    public ContextMenu addLinkItem(String label, String url) {
+        return this.addLinkItem(Component.literal(label), url);
+    }
+
+    public ContextMenu addLinkItem(Component label, String url) {
+        this.items.add(new LinkItem(label, url));
+        recalcWidth();
+        return this;
+    }
+
+    public ContextMenu addCopyItem(String label, String text) {
+        return this.addCopyItem(Component.literal(label), text);
+    }
+
+    public ContextMenu addCopyItem(Component label, String text) {
+        this.items.add(new CopyItem(label, text));
+        recalcWidth();
+        return this;
+    }
+
     public void open() {
         this.visible = true;
     }
@@ -104,7 +135,7 @@ public class ContextMenu {
         return this.visible;
     }
 
-    public void render(GuiGraphics graphics, DeltaTracker tickDelta) {
+    public void render(GuiGraphicsExtractor graphics, DeltaTracker tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         render(graphics,
                 (int) mc.mouseHandler.getScaledXPos(mc.getWindow()),
@@ -112,7 +143,7 @@ public class ContextMenu {
                 tickDelta);
     }
 
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, DeltaTracker tickDelta) {
+    public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, DeltaTracker tickDelta) {
         if (!this.visible) return;
 
         Minecraft mc = Minecraft.getInstance();
@@ -137,6 +168,7 @@ public class ContextMenu {
 
         ContextMenu nextSubmenu = null;
         int nextSubmenuIndex = -1;
+        ItemStack hoveredStack = null;
 
         for (int i = 0; i < this.items.size(); i++) {
             MenuItem item = this.items.get(i);
@@ -152,10 +184,22 @@ public class ContextMenu {
             }
 
             int textColor = hovered ? ContextMenu.COLOR_TEXT_HOVER : ContextMenu.COLOR_TEXT;
-            graphics.drawString(mc.font, item.getLabel(), this.x + ContextMenu.PADDING_X, itemY + 4, textColor, false);
+
+            if (item instanceof ItemStackMenuItem ism) {
+                graphics.item(ism.stack, this.x + ContextMenu.PADDING_X, itemY);
+                graphics.text(mc.font, item.getLabel(),
+                        this.x + ContextMenu.PADDING_X + ContextMenu.ITEM_HEIGHT + 2,
+                        itemY + 4, textColor, false);
+                if (hovered) {
+                    hoveredStack = ism.stack; // on mémorise, on ne rend pas encore
+                }
+            } else {
+                graphics.text(mc.font, item.getLabel(),
+                        this.x + ContextMenu.PADDING_X, itemY + 4, textColor, false);
+            }
 
             if (item instanceof SubmenuItem si) {
-                graphics.drawString(mc.font, ">", this.x + this.width - ContextMenu.ARROW_RIGHT_PAD, itemY + 4, textColor, false);
+                graphics.text(mc.font, ">", this.x + this.width - ContextMenu.ARROW_RIGHT_PAD, itemY + 4, textColor, false);
                 if (hovered) {
                     nextSubmenu = si.submenu;
                     nextSubmenuIndex = i;
@@ -177,6 +221,17 @@ public class ContextMenu {
                 this.openSubmenu.close();
                 this.openSubmenu = null;
             }
+        }
+
+        if (hoveredStack != null) {
+            // Render the tooltip immediately (on top of the menu) instead of deferring it,
+            // since our menu is drawn after the screen's deferred-tooltip pass.
+            List<ClientTooltipComponent> components = new ArrayList<>();
+            for (Component line : Screen.getTooltipFromItem(mc, hoveredStack)) {
+                components.add(ClientTooltipComponent.create(line.getVisualOrderText()));
+            }
+            hoveredStack.getTooltipImage().ifPresent(image -> components.add(1, ClientTooltipComponent.create(image)));
+            graphics.tooltip(mc.font, components, mouseX, mouseY, DefaultTooltipPositioner.INSTANCE, null);
         }
 
         if (this.openSubmenu != null) {
@@ -249,6 +304,8 @@ public class ContextMenu {
             int lw = mc.font.width(item.getLabel());
             if (item instanceof SubmenuItem)
                 lw += ContextMenu.ARROW_RIGHT_PAD + 4;
+            if (item instanceof ItemStackMenuItem)
+                lw += ContextMenu.ITEM_HEIGHT; // place pour l'icône 16x16
             if (lw > max)
                 max = lw;
         }
@@ -308,31 +365,40 @@ public class ContextMenu {
             if (pi == null)
                 return;
 
-            String c = this.command;
-            if (c.contains("%mcname%"))
-                c = c.replace("%mcname%", ContextMenuTrigger.getMCName(player));
-            if (c.contains("%rpname%"))
-                c = c.replace("%rpname%", pi.getTabListDisplayName().getString());
-            if (c.contains("%blockpos%"))
-                c = c.replace("%blockpos%", "%s %s %s".formatted(player.getBlockX(), player.getBlockY(), player.getBlockZ()));
-            if (c.contains("%eyepos%"))
-                c = c.replace("%eyepos%", "%s %s %s".formatted(player.getEyePosition().x, player.getEyePosition().y, player.getEyePosition().z));
-            if (c.contains("%uuid%"))
-                c = c.replace("%uuid%", player.getStringUUID());
+            String c = replaceString(this.command, player);
 
-            LocalPlayer me = mc.player;
-            if (c.contains("%mymcname%"))
-                c = c.replace("%mymcname%", ContextMenuTrigger.getMCName(me));
-            if (c.contains("%myrpname%"))
-                c = c.replace("%myrpname%", me.connection.getPlayerInfo(me.getUUID()).getTabListDisplayName().getString());
-            if (c.contains("%mypos%"))
-                c = c.replace("%mypos%","%s %s %s".formatted(me.getBlockX(), me.getBlockY(), me.getBlockZ()));
-            if (c.contains("%myuuid%"))
-                c = c.replace("%myuuid%", "%s %s %s".formatted(me.getEyePosition().x, me.getEyePosition().y, me.getEyePosition().z));
-
-            HBTweaksContext.LOGGER.info("COMMAND RUN : " + c);
+            //HBTweaksContext.LOGGER.info("COMMAND RUN : " + c);
             mc.player.connection.sendCommand(c);
         }
+    }
+
+    public static String replaceString(String c, Player player) {
+        PlayerInfo pi = Minecraft.getInstance().player.connection.getPlayerInfo(player.getUUID());
+
+        if (c.contains("%mcname%"))
+            c = c.replace("%mcname%", ContextMenuTrigger.getMCName(player));
+        if (c.contains("%rpname%"))
+            c = c.replace("%rpname%", pi.getTabListDisplayName().getString());
+        if (c.contains("%blockpos%"))
+            c = c.replace("%blockpos%", "%s %s %s".formatted(player.getBlockX(), player.getBlockY(), player.getBlockZ()));
+        if (c.contains("%eyepos%"))
+            c = c.replace("%eyepos%", "%s %s %s".formatted(player.getEyePosition().x, player.getEyePosition().y, player.getEyePosition().z));
+        if (c.contains("%uuid%"))
+            c = c.replace("%uuid%", player.getStringUUID());
+
+        LocalPlayer me = Minecraft.getInstance().player;
+        if (c.contains("%mymcname%"))
+            c = c.replace("%mymcname%", ContextMenuTrigger.getMCName(me));
+        if (c.contains("%myrpname%"))
+            c = c.replace("%myrpname%", me.connection.getPlayerInfo(me.getUUID()).getTabListDisplayName().getString());
+        if (c.contains("%myblockpos%"))
+            c = c.replace("%myblockpos%","%s %s %s".formatted(me.getBlockX(), me.getBlockY(), me.getBlockZ()));
+        if (c.contains("%myeyepos%"))
+            c = c.replace("%myeyepos%", "%s %s %s".formatted(me.getEyePosition().x, me.getEyePosition().y, me.getEyePosition().z));
+        if (c.contains("%myuuid%"))
+            c = c.replace("%myuuid%", me.getStringUUID());
+
+        return c;
     }
 
     private static final class SubmenuItem implements MenuItem {
@@ -369,6 +435,68 @@ public class ContextMenu {
 
         @Override public void onClick() {
             // Nothing
+        }
+    }
+
+    private static final class ItemStackMenuItem implements MenuItem {
+        private final ItemStack stack;
+
+        ItemStackMenuItem(ItemStack stack) {
+            this.stack = stack;
+        }
+
+        @Override
+        public Component getLabel() {
+            return stack.getHoverName();
+        }
+
+        @Override
+        public void onClick() {
+            // Pas d'action
+        }
+    }
+
+    private static final class LinkItem implements MenuItem {
+        private final Component label;
+        private final String url;
+
+        LinkItem(Component label, String url) {
+            this.label = label;
+            this.url = url;
+        }
+
+        @Override
+        public Component getLabel() {
+            return this.label;
+        }
+
+        @Override
+        public void onClick() {
+            try {
+                Util.getPlatform().openUri(new java.net.URI(this.url));
+            } catch (java.net.URISyntaxException e) {
+                HBTweaksContext.LOGGER.error("Invalid URL: {}", this.url, e);
+            }
+        }
+    }
+
+    private static final class CopyItem implements MenuItem {
+        private final Component label;
+        private final String text;
+
+        CopyItem(Component label, String text) {
+            this.label = label;
+            this.text = text;
+        }
+
+        @Override
+        public Component getLabel() {
+            return this.label;
+        }
+
+        @Override
+        public void onClick() {
+            Minecraft.getInstance().keyboardHandler.setClipboard(this.text);
         }
     }
 

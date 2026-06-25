@@ -1,0 +1,23 @@
+menu:
+  - label: "Custom"
+    submenu:
+    - label: "Téléporter à la cible"
+      command: "tp %mymcname% %mcname%"
+
+    - label: "Roll 1d100 pour la cible"
+      command: "roll 1d100 for:%mcname%"
+        # %mcname% -> nom Minecraft de la cible
+        # %rpname% -> nom RP de la cible
+        # %blockpos% -> position de la cible
+        # %eyepos% -> position des yeux de la cible
+        # %uuid% -> UUID de la cible
+        # %mymcname% -> nom Minecraft du joueur
+        # %myrpname% -> nom RP du joueur
+        # %myblockpos% -> position bloc du joueur
+        # %myeyepos% -> position des yeux du joueur
+        # %myuuid% -> UUID du joueur
+
+    - label: "Infos"
+      submenu:
+        - info: "Made by Vaïnerii !"
+        - info: "With love !"
