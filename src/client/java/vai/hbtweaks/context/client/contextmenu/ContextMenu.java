@@ -105,7 +105,8 @@ public class ContextMenu {
     }
 
     public ContextMenu withEditToggle() {
-        this.hasEditToggle = EDIT_ENABLED;
+        this.hasEditToggle = EDIT_ENABLED
+                && !vai.hbtweaks.context.client.config.HBConfig.get().hidePlusBox;
         return this;
     }
 

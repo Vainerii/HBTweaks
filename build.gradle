@@ -12,6 +12,14 @@ repositories {
 		name = "Gegy"
 		url = uri("https://maven.gegy.dev")
 	}
+	maven {
+		name = "Xander Maven"
+		url = uri("https://maven.isxander.dev/releases")
+	}
+	maven {
+		name = "Terraformers"
+		url = "https://maven.terraformersmc.com/"
+	}
 }
 
 loom {
@@ -37,6 +45,9 @@ dependencies {
 
 	include(implementation("dev.lambdaurora:spruceui:${project.spruceui_version}"))
 	include("dev.yumi.mc.core:yumi-mc-foundation:1.0.0-beta.2+26.1")
+
+	implementation "dev.isxander:yet-another-config-lib:${project.yacl_version}"
+	implementation("com.terraformersmc:modmenu:${project.modmenu_version}")
 
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }

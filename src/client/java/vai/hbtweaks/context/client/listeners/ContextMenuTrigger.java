@@ -12,6 +12,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
@@ -21,6 +22,7 @@ import vai.hbtweaks.context.client.contextmenu.CustomContextMenuLoader;
 import vai.hbtweaks.context.client.contextmenu.editor.DeleteConfirmScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
 import vai.hbtweaks.context.client.Util;
+import vai.hbtweaks.context.client.config.HBConfig;
 import vai.hbtweaks.context.client.mouse.MouseTracker;
 import vai.hbtweaks.context.client.mouse.MouseTrackerEntityClickUpCallback;
 import vai.hbtweaks.context.client.mouse.ClickType;
@@ -44,6 +46,18 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
     public static Map<String, Object> customMenu = CustomContextMenuLoader.readYaml(CUSTOM_MENU);
     public static Map<String, Object> customMenuSelf = CustomContextMenuLoader.readYaml(CUSTOM_MENU_SELF);
+
+    private static final Component P_INF = Component.literal(" [:]").withStyle(ChatFormatting.WHITE);
+
+    private static final Component P_100 = Component.literal(" [!]").withStyle(ChatFormatting.RED);
+
+    private static final Component P_50 = Component.literal(" [+]").withStyle(ChatFormatting.YELLOW);
+
+    private static final Component P_20 = Component.literal(" [ ]").withStyle(ChatFormatting.GREEN);
+
+    private static final Component P_10 = Component.literal(" [-]").withStyle(ChatFormatting.DARK_GREEN);
+
+    private static final Component P_3 = Component.literal(" [#]").withStyle(ChatFormatting.DARK_AQUA);
 
     public static void onFileEdited(Path file, Map<String, Object> root) {
         if (file.equals(CUSTOM_MENU))
@@ -284,17 +298,46 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         Component name = Util.getRpName(target);
         if (name == null) return;
 
-        int mouseX = (int) mc.mouseHandler.getScaledXPos(mc.getWindow());
-        int mouseY = (int) mc.mouseHandler.getScaledYPos(mc.getWindow());
-        int boxX = mouseX + 8;
-        int boxY = mouseY + 8;
+        double dist = mc.player.position().distanceTo(target.position());
+
+        MutableComponent nameLine = name.copy();
+        if (dist > 100f)
+            nameLine.append(P_INF);
+        else if (dist > 50f)
+            nameLine.append(P_100);
+        else if (dist > 20f)
+            nameLine.append(P_50);
+        else if (dist > 10f)
+            nameLine.append(P_20);
+        else if (dist > 3f)
+            nameLine.append(P_10);
+        else
+            nameLine.append(P_3);
+
         int pad = 2;
-        int textW = mc.font.width(name);
+        int textW = mc.font.width(nameLine);
         int lineH = mc.font.lineHeight;
+        int boxW = textW + pad * 2;
+        int boxH = lineH + pad * 2;
+        int margin = 5;
+        int screenW = mc.getWindow().getGuiScaledWidth();
+        int screenH = mc.getWindow().getGuiScaledHeight();
+
+        int boxX;
+        int boxY;
+        switch (HBConfig.get().hoverLocation) {
+            case TOP_LEFT -> { boxX = margin; boxY = margin; }
+            case TOP_RIGHT -> { boxX = screenW - boxW - margin; boxY = margin; }
+            case BOTTOM_RIGHT -> { boxX = screenW - boxW - margin; boxY = screenH - boxH - margin; }
+            default -> {
+                boxX = (int) mc.mouseHandler.getScaledXPos(mc.getWindow()) + 8;
+                boxY = (int) mc.mouseHandler.getScaledYPos(mc.getWindow()) + 8;
+            }
+        }
 
         graphics.fill(boxX - 1, boxY - 1, boxX + textW + pad * 2 + 1, boxY + lineH + pad * 2 + 1, 0xFF3A3A3A);
         graphics.fill(boxX, boxY, boxX + textW + pad * 2, boxY + lineH + pad * 2, 0xE0101010);
-        graphics.text(mc.font, name, boxX + pad, boxY + pad, 0xFFFFFFFF, false);
+        graphics.text(mc.font, nameLine, boxX + pad, boxY + pad, 0xFFFFFFFF, false);
     }
 
     @Override

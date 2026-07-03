@@ -19,5 +19,17 @@
   "hbtweaks.context.editor.tag.myrpname": "your RP name",
   "hbtweaks.context.editor.tag.myblockpos": "your block pos",
   "hbtweaks.context.editor.tag.myeyepos": "your eye pos",
-  "hbtweaks.context.editor.tag.myuuid": "your UUID"
+  "hbtweaks.context.editor.tag.myuuid": "your UUID",
+  "hbtweaks.context.config.title": "HB Tweaks - Context",
+  "hbtweaks.context.config.category.general": "General",
+  "hbtweaks.context.config.hover_location": "Hover box location",
+  "hbtweaks.context.config.hover_location.tooltip": "Where the RP name box (player under the cursor) is shown.",
+  "hbtweaks.context.config.box_position": "Info box position",
+  "hbtweaks.context.config.box_position.tooltip": "Where the box with the name of the player you look at is shown.",
+  "hbtweaks.context.config.hide_plus": "Hide the \"+\" box",
+  "hbtweaks.context.config.hide_plus.tooltip": "Hides the small edit toggle box in the context menu.",
+  "hbtweaks.context.config.pos.top_left": "Top left",
+  "hbtweaks.context.config.pos.top_right": "Top right",
+  "hbtweaks.context.config.pos.bottom_right": "Bottom right",
+  "hbtweaks.context.config.pos.mouse": "Mouse"
 }

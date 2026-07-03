@@ -19,5 +19,17 @@
   "hbtweaks.context.editor.tag.myrpname": "votre nom RP",
   "hbtweaks.context.editor.tag.myblockpos": "votre position",
   "hbtweaks.context.editor.tag.myeyepos": "position de vos yeux",
-  "hbtweaks.context.editor.tag.myuuid": "votre UUID"
+  "hbtweaks.context.editor.tag.myuuid": "votre UUID",
+  "hbtweaks.context.config.title": "HB Tweaks - Context",
+  "hbtweaks.context.config.category.general": "Général",
+  "hbtweaks.context.config.hover_location": "Emplacement de la boîte au survol",
+  "hbtweaks.context.config.hover_location.tooltip": "Où afficher la boîte du nom RP (joueur sous le curseur).",
+  "hbtweaks.context.config.box_position": "Position de la boîte d'info",
+  "hbtweaks.context.config.box_position.tooltip": "Où afficher la boîte avec le nom du joueur que vous regardez.",
+  "hbtweaks.context.config.hide_plus": "Masquer la boîte \"+\"",
+  "hbtweaks.context.config.hide_plus.tooltip": "Masque la petite boîte d'édition dans le menu contextuel.",
+  "hbtweaks.context.config.pos.top_left": "En haut à gauche",
+  "hbtweaks.context.config.pos.top_right": "En haut à droite",
+  "hbtweaks.context.config.pos.bottom_right": "En bas à droite",
+  "hbtweaks.context.config.pos.mouse": "Souris"
 }
