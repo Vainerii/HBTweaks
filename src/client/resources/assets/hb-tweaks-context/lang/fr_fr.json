@@ -31,5 +31,6 @@
   "hbtweaks.context.config.pos.top_left": "En haut à gauche",
   "hbtweaks.context.config.pos.top_right": "En haut à droite",
   "hbtweaks.context.config.pos.bottom_right": "En bas à droite",
-  "hbtweaks.context.config.pos.mouse": "Souris"
+  "hbtweaks.context.config.pos.mouse": "Souris",
+  "hbtweaks.context.writing": "En train d'écrire..."
 }

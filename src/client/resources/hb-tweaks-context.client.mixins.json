@@ -3,7 +3,8 @@
 	"package": "vai.hbtweaks.context.client.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"ChatScreenAccessor"
+		"ChatScreenAccessor",
+		"ChatScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

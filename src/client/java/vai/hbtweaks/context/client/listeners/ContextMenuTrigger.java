@@ -7,6 +7,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.multiplayer.PlayerInfo;
@@ -21,6 +22,7 @@ import vai.hbtweaks.context.client.contextmenu.ContextMenu;
 import vai.hbtweaks.context.client.contextmenu.CustomContextMenuLoader;
 import vai.hbtweaks.context.client.contextmenu.editor.DeleteConfirmScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
+import vai.hbtweaks.context.client.keyboard.WritersBank;
 import vai.hbtweaks.context.client.Util;
 import vai.hbtweaks.context.client.config.HBConfig;
 import vai.hbtweaks.context.client.mouse.MouseTracker;
@@ -47,17 +49,17 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     public static Map<String, Object> customMenu = CustomContextMenuLoader.readYaml(CUSTOM_MENU);
     public static Map<String, Object> customMenuSelf = CustomContextMenuLoader.readYaml(CUSTOM_MENU_SELF);
 
-    private static final Component P_INF = Component.literal(" [:]").withStyle(ChatFormatting.WHITE);
+    private static final Component P_INF = Component.literal("[:]").withStyle(ChatFormatting.WHITE);
 
-    private static final Component P_100 = Component.literal(" [!]").withStyle(ChatFormatting.RED);
+    private static final Component P_100 = Component.literal("[!]").withStyle(ChatFormatting.RED);
 
-    private static final Component P_50 = Component.literal(" [+]").withStyle(ChatFormatting.YELLOW);
+    private static final Component P_50 = Component.literal("[+]").withStyle(ChatFormatting.YELLOW);
 
-    private static final Component P_20 = Component.literal(" [ ]").withStyle(ChatFormatting.GREEN);
+    private static final Component P_20 = Component.literal("[ ]").withStyle(ChatFormatting.GREEN);
 
-    private static final Component P_10 = Component.literal(" [-]").withStyle(ChatFormatting.DARK_GREEN);
+    private static final Component P_10 = Component.literal("[-]").withStyle(ChatFormatting.DARK_GREEN);
 
-    private static final Component P_3 = Component.literal(" [#]").withStyle(ChatFormatting.DARK_AQUA);
+    private static final Component P_3 = Component.literal("[#]").withStyle(ChatFormatting.DARK_AQUA);
 
     public static void onFileEdited(Path file, Map<String, Object> root) {
         if (file.equals(CUSTOM_MENU))
@@ -149,6 +151,16 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         return context;
     }
 
+    // TODO temporary: manual writers-list toggling for testing
+    private ContextMenu makeTestContextMenu(Player player) {
+        ContextMenu context = new ContextMenu(0, 0, player);
+        context.addActionItem(Component.literal("make writer").withStyle(ChatFormatting.GREEN),
+                () -> WritersBank.startWriting(player));
+        context.addActionItem(Component.literal("stop writer").withStyle(ChatFormatting.RED),
+                () -> WritersBank.stopWriting(player));
+        return context;
+    }
+
     private ContextMenu makeInfoContextMenu(Player player) {
 
         PlayerInfo pi = Minecraft.getInstance().player.connection.getPlayerInfo(player.getUUID());
@@ -176,8 +188,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         ContextMenu emotes = new ContextMenu(0, 0, self);
         emotes.addCommandItem("S'allonger", "lay");
         emotes.addCommandItem("S'asseoir", "sit");
-        emotes.addCommandItem("Applaudir", "emote clapclap");
-        emotes.addCommandItem("S'agenouiller", "emote kneel");
+        emotes.addCommandItem("Menu d'émote", "emote");
         context.addSubmenuItem("Emotes", emotes);
 
         context.addCommandItem("Marcher", "walk");
@@ -203,6 +214,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     @Override
     public void onClickUp(List<Entity> list, ClickType clickType, ScreenType screenType) {
         if (screenType == ScreenType.CHAT && clickType == ClickType.RIGHT_CLICK) {
+            if (isMouseOverChat()) return;
             Minecraft mc = Minecraft.getInstance();
             int x = (int) mc.mouseHandler.getScaledXPos(mc.getWindow());
             int y = (int) mc.mouseHandler.getScaledYPos(mc.getWindow());
@@ -251,12 +263,28 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
             if (hasDev())
                 ContextMenuTrigger.contextMenu.addSubmenuItem("Debug", makeDebugContextMenu(targetPlayer));
 
+            // == Test (temporary) ==
+            //ContextMenuTrigger.contextMenu.addSubmenuItem("Test", makeTestContextMenu(targetPlayer));
+
             // == Add (edition) ==
             ContextMenuTrigger.contextMenu.addAddItem(new MenuLocation(CUSTOM_MENU, List.of()));
             ContextMenuTrigger.contextMenu.withEditToggle();
 
             ContextMenuTrigger.contextMenu.open();
         }
+    }
+
+    private static boolean isMouseOverChat() {
+        Minecraft mc = Minecraft.getInstance();
+        double scale = mc.options.chatScale().get();
+        if (scale <= 0) return false;
+        int width = ChatComponent.getWidth(mc.options.chatWidth().get());
+        int height = (int) (ChatComponent.getHeight(mc.options.chatHeightFocused().get()) * scale);
+        int bottom = mc.getWindow().getGuiScaledHeight() - 40;
+        int top = bottom - height;
+        double mx = mc.mouseHandler.getScaledXPos(mc.getWindow());
+        double my = mc.mouseHandler.getScaledYPos(mc.getWindow());
+        return mx >= 0 && mx <= width && my >= top && my <= bottom;
     }
 
     public void renderOnScreen(GuiGraphicsExtractor graphics, DeltaTracker tickDelta) {
@@ -283,6 +311,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     }
 
     private static void renderHoverName(GuiGraphicsExtractor graphics) {
+        if (isMouseOverChat()) return;
         Player target = null;
         for (Entity e : MouseTracker.getHoveredEntities()) {
             if (e instanceof Player p) {
@@ -300,7 +329,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
         double dist = mc.player.position().distanceTo(target.position());
 
-        MutableComponent nameLine = name.copy();
+        MutableComponent nameLine = name.copy().append(Component.literal(" - ").withStyle(ChatFormatting.WHITE));
         if (dist > 100f)
             nameLine.append(P_INF);
         else if (dist > 50f)
@@ -314,9 +343,24 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         else
             nameLine.append(P_3);
 
+        nameLine.append(Component.literal(" - ").withStyle(ChatFormatting.WHITE));
+
+        boolean writing = WritersBank.isWriting(target);
+        int subtick = mc.gui.getGuiTicks() % 50;
+        for (int i = 1; i <= 3; i++) {
+            int v = 0x30;
+            if (writing) {
+                int level = Math.max(0, 8 - Math.abs(subtick - i * 10)); // evolution over 8 ticks, peak at i*10
+                v = 0x30 + level * (0xFF - 0x30) / 8;
+            }
+            nameLine.append(Component.literal("•").withColor(0xFF000000 | (v << 16) | (v << 8) | v));
+        }
+        if (!writing && !WritersBank.alreadyWrote(target))
+            nameLine.append(Component.literal("?").withColor(0xFF303030));
+
         int pad = 2;
-        int textW = mc.font.width(nameLine);
         int lineH = mc.font.lineHeight;
+        int textW = mc.font.width(nameLine);
         int boxW = textW + pad * 2;
         int boxH = lineH + pad * 2;
         int margin = 5;
@@ -335,8 +379,8 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
             }
         }
 
-        graphics.fill(boxX - 1, boxY - 1, boxX + textW + pad * 2 + 1, boxY + lineH + pad * 2 + 1, 0xFF3A3A3A);
-        graphics.fill(boxX, boxY, boxX + textW + pad * 2, boxY + lineH + pad * 2, 0xE0101010);
+        graphics.fill(boxX - 1, boxY - 1, boxX + boxW + 1, boxY + boxH + 1, 0xFF3A3A3A);
+        graphics.fill(boxX, boxY, boxX + boxW, boxY + boxH, 0xE0101010);
         graphics.text(mc.font, nameLine, boxX + pad, boxY + pad, 0xFFFFFFFF, false);
     }
 
