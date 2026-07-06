@@ -16,9 +16,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import org.lwjgl.glfw.GLFW;
 import vai.hbtweaks.context.client.contextmenu.ContextMenu;
+import vai.hbtweaks.context.client.effects.EffectsBank;
+import vai.hbtweaks.context.client.network.EffectPayloads;
 import vai.hbtweaks.context.client.contextmenu.CustomContextMenuLoader;
 import vai.hbtweaks.context.client.contextmenu.editor.DeleteConfirmScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
@@ -42,6 +46,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 {
 
     private static ContextMenu contextMenu = null;
+    private static java.util.UUID effectsRequestedFor = null;
 
     public static final Path CUSTOM_MENU = Paths.get("custom_menu.yml");
     public static final Path CUSTOM_MENU_SELF = Paths.get("custom_menu_self.yml");
@@ -299,6 +304,10 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     }
 
     private static void render(GuiGraphicsExtractor graphics, DeltaTracker tickDelta) {
+        boolean leftDown = hasPerm() && GLFW.glfwGetMouseButton(
+                Minecraft.getInstance().getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+        if (!leftDown) effectsRequestedFor = null;
+
         if (contextMenu != null
                 && (!contextMenu.isVisible() || Minecraft.getInstance().mouseHandler.isMouseGrabbed())) {
             contextMenu.close();
@@ -307,10 +316,10 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         if (contextMenu != null)
             contextMenu.render(graphics, tickDelta);
         else
-            renderHoverName(graphics);
+            renderHoverName(graphics, leftDown);
     }
 
-    private static void renderHoverName(GuiGraphicsExtractor graphics) {
+    private static void renderHoverName(GuiGraphicsExtractor graphics, boolean leftDown) {
         if (isMouseOverChat()) return;
         Player target = null;
         for (Entity e : MouseTracker.getHoveredEntities()) {
@@ -350,7 +359,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         for (int i = 1; i <= 3; i++) {
             int v = 0x30;
             if (writing) {
-                int level = Math.max(0, 8 - Math.abs(subtick - i * 10)); // evolution over 8 ticks, peak at i*10
+                int level = Math.max(0, 8 - Math.abs(subtick - i * 10));
                 v = 0x30 + level * (0xFF - 0x30) / 8;
             }
             nameLine.append(Component.literal("•").withColor(0xFF000000 | (v << 16) | (v << 8) | v));
@@ -358,11 +367,29 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         if (!writing && !WritersBank.alreadyWrote(target))
             nameLine.append(Component.literal("?").withColor(0xFF303030));
 
+        if (leftDown && !target.getUUID().equals(effectsRequestedFor)) {
+            EffectPayloads.requestEffects(target.getUUID());
+            effectsRequestedFor = target.getUUID();
+        }
+
+        List<Component> lines = new java.util.ArrayList<>();
+        lines.add(nameLine);
+        if (leftDown) {
+            for (MobEffectInstance eff : EffectsBank.get(target)) {
+                MutableComponent line = eff.getEffect().value().getDisplayName().copy();
+                if (eff.getAmplifier() > 0)
+                    line.append(" " + (eff.getAmplifier() + 1));
+                lines.add(line);
+            }
+        }
+
         int pad = 2;
         int lineH = mc.font.lineHeight;
-        int textW = mc.font.width(nameLine);
+        int textW = 0;
+        for (Component c : lines)
+            textW = Math.max(textW, mc.font.width(c));
         int boxW = textW + pad * 2;
-        int boxH = lineH + pad * 2;
+        int boxH = lineH * lines.size() + pad * 2;
         int margin = 5;
         int screenW = mc.getWindow().getGuiScaledWidth();
         int screenH = mc.getWindow().getGuiScaledHeight();
@@ -381,7 +408,8 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
         graphics.fill(boxX - 1, boxY - 1, boxX + boxW + 1, boxY + boxH + 1, 0xFF3A3A3A);
         graphics.fill(boxX, boxY, boxX + boxW, boxY + boxH, 0xE0101010);
-        graphics.text(mc.font, nameLine, boxX + pad, boxY + pad, 0xFFFFFFFF, false);
+        for (int i = 0; i < lines.size(); i++)
+            graphics.text(mc.font, lines.get(i), boxX + pad, boxY + pad + i * lineH, 0xFFFFFFFF, false);
     }
 
     @Override

@@ -13,6 +13,7 @@ import vai.hbtweaks.context.client.listeners.ContextMenuTrigger;
 import vai.hbtweaks.context.client.listeners.LookAtInfoBox;
 import vai.hbtweaks.context.client.listeners.SendMessageTrigger;
 import vai.hbtweaks.context.client.keyboard.WritingStatusSender;
+import vai.hbtweaks.context.client.network.EffectPayloads;
 import vai.hbtweaks.context.client.network.MessagePayloads;
 import vai.hbtweaks.context.client.mouse.MouseTracker;
 import vai.hbtweaks.context.client.mouse.MouseTrackerEntityClickUpCallback;
@@ -37,6 +38,7 @@ public class HBTweaksContextClient implements ClientModInitializer {
 		lookAtInfoBox.register();
 
 		MessagePayloads.init();
+		EffectPayloads.init();
 		WritingStatusSender.init();
 
 		MouseTracker.register();
