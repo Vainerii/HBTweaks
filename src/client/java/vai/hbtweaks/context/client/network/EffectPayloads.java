@@ -34,7 +34,7 @@ public final class EffectPayloads {
     public record RequestEffectsPayload(UUID player) implements CustomPacketPayload {
 
         public static final CustomPacketPayload.Type<RequestEffectsPayload> ID =
-                new CustomPacketPayload.Type<>(Identifier.parse("herobrine:hbtweaks/request_effects"));
+                new CustomPacketPayload.Type<>(Identifier.parse("herobrine:request_player_effects"));
 
         public static final StreamCodec<RegistryFriendlyByteBuf, RequestEffectsPayload> CODEC =
                 StreamCodec.composite(
@@ -49,7 +49,7 @@ public final class EffectPayloads {
     public record PlayerEffectsPayload(UUID player, List<MobEffectInstance> effects) implements CustomPacketPayload {
 
         public static final CustomPacketPayload.Type<PlayerEffectsPayload> ID =
-                new CustomPacketPayload.Type<>(Identifier.parse("herobrine:hbtweaks/player_effects"));
+                new CustomPacketPayload.Type<>(Identifier.parse("herobrine:player_effects"));
 
         public static final StreamCodec<RegistryFriendlyByteBuf, PlayerEffectsPayload> CODEC =
                 StreamCodec.composite(
