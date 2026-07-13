@@ -20,6 +20,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.lwjgl.glfw.GLFW;
+import vai.hbtweaks.context.HBTweaksContext;
 import vai.hbtweaks.context.client.contextmenu.ContextMenu;
 import vai.hbtweaks.context.client.effects.EffectsBank;
 import vai.hbtweaks.context.client.network.EffectPayloads;
@@ -209,62 +210,69 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         if (screenType == ScreenType.CHAT && clickType == ClickType.RIGHT_CLICK) {
             if (isMouseOverChat()) return;
             Minecraft mc = Minecraft.getInstance();
+            if (mc.player == null) return;
             int x = (int) mc.mouseHandler.getScaledXPos(mc.getWindow());
             int y = (int) mc.mouseHandler.getScaledYPos(mc.getWindow());
 
-            Entity target = list.isEmpty() ? null : list.getFirst();
-            if (!(target instanceof Player)) {
-                if (mc.player == null)
+            try {
+                Entity target = list.isEmpty() ? null : list.getFirst();
+                if (!(target instanceof Player targetPlayer)) {
+                    if (ContextMenuTrigger.contextMenu != null)
+                        ContextMenuTrigger.contextMenu.close();
+                    ContextMenuTrigger.contextMenu = makeSelfContextMenu(mc.player, x, y);
+                    ContextMenuTrigger.contextMenu.open();
                     return;
+                }
+
+                if (mc.player.connection.getPlayerInfo(targetPlayer.getUUID()) == null)
+                    return;
+
                 if (ContextMenuTrigger.contextMenu != null)
                     ContextMenuTrigger.contextMenu.close();
-                ContextMenuTrigger.contextMenu = makeSelfContextMenu(mc.player, x, y);
+
+                ContextMenuTrigger.contextMenu = new ContextMenu(x, y, targetPlayer);
+
+                // == Infos ==
+                addSubmenuIfPresent("Infos", makeInfoContextMenu(targetPlayer));
+
+                // == Reput ==
+                if (isCommandAvailable("reputok"))
+                    addSubmenuIfPresent("Reput", makeReputContextMenu(targetPlayer));
+
+                // == Avis ==
+                if (isCommandAvailable("avisok"))
+                    addSubmenuIfPresent("Avis", makeAvisContextMenu(targetPlayer));
+
+                // == Items ==
+                if (hasPerm())
+                    addSubmenuIfPresent("Items", makeInvContextMenu(targetPlayer));
+
+                // == Custom ==
+                if (ContextMenuTrigger.customMenu != null)
+                    ContextMenuTrigger.contextMenu.merge(CustomContextMenuLoader.load(ContextMenuTrigger.customMenu, targetPlayer, CUSTOM_MENU));
+
+                // == Debug ==
+                if (hasDev())
+                    addSubmenuIfPresent("Debug", makeDebugContextMenu(targetPlayer));
+
+                // == Test (temporary) ==
+                //addSubmenuIfPresent("Test", makeTestContextMenu(targetPlayer));
+
+                // == Add (edition) ==
+                ContextMenuTrigger.contextMenu.addAddItem(new MenuLocation(CUSTOM_MENU, List.of()));
+                ContextMenuTrigger.contextMenu.withEditToggle();
+
                 ContextMenuTrigger.contextMenu.open();
-                return;
+            } catch (Exception e) {
+                HBTweaksContext.LOGGER.error("Failed to open context menu", e);
+                dispose();
             }
-
-            Player targetPlayer = (Player) target;
-            if (mc.player.connection.getPlayerInfo(targetPlayer.getUUID()) == null)
-                return;
-
-            if (ContextMenuTrigger.contextMenu != null) {
-                ContextMenuTrigger.contextMenu.close();
-            }
-
-            ContextMenuTrigger.contextMenu = new ContextMenu(x, y, targetPlayer);
-
-            // == Infos ==
-            ContextMenuTrigger.contextMenu.addSubmenuItem("Infos", makeInfoContextMenu(targetPlayer));
-
-            // == Reput ==
-            if (isCommandAvailable("reputok"))
-                ContextMenuTrigger.contextMenu.addSubmenuItem("Reput", makeReputContextMenu(targetPlayer));
-
-            // == Avis ==
-            if (isCommandAvailable("avisok"))
-                ContextMenuTrigger.contextMenu.addSubmenuItem("Avis", makeAvisContextMenu(targetPlayer));
-
-            // == Items ==
-            if (hasPerm())
-                ContextMenuTrigger.contextMenu.addSubmenuItem("Items", makeInvContextMenu(targetPlayer));
-
-            // == Custom ==
-            if (ContextMenuTrigger.customMenu != null)
-                ContextMenuTrigger.contextMenu.merge(CustomContextMenuLoader.load(ContextMenuTrigger.customMenu, targetPlayer, CUSTOM_MENU));
-
-            // == Debug ==
-            if (hasDev())
-                ContextMenuTrigger.contextMenu.addSubmenuItem("Debug", makeDebugContextMenu(targetPlayer));
-
-            // == Test (temporary) ==
-            //ContextMenuTrigger.contextMenu.addSubmenuItem("Test", makeTestContextMenu(targetPlayer));
-
-            // == Add (edition) ==
-            ContextMenuTrigger.contextMenu.addAddItem(new MenuLocation(CUSTOM_MENU, List.of()));
-            ContextMenuTrigger.contextMenu.withEditToggle();
-
-            ContextMenuTrigger.contextMenu.open();
         }
+    }
+
+    private static void addSubmenuIfPresent(String label, ContextMenu submenu) {
+        if (submenu != null)
+            ContextMenuTrigger.contextMenu.addSubmenuItem(label, submenu);
     }
 
     private static boolean isMouseOverChat() {
