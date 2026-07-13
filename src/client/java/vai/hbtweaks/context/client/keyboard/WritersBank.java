@@ -2,17 +2,31 @@ package vai.hbtweaks.context.client.keyboard;
 
 import net.minecraft.world.entity.player.Player;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
-public class WritersBank extends HashSet<UUID> {
+public class WritersBank {
 
-    private final HashSet<UUID> seen = new HashSet<>();
+    private static final long WRITING_TIMEOUT = 7000;
 
-    private static final WritersBank INSTANCE = new WritersBank();
+    private static final Map<UUID, Long> writing = new HashMap<>();
+    private static final Set<UUID> seen = new HashSet<>();
 
     public static boolean isWriting(Player player) {
-        return INSTANCE.contains(player.getUUID());
+        return isWriting(player.getUUID());
+    }
+
+    public static boolean isWriting(UUID uuid) {
+        Long t = writing.get(uuid);
+        if (t == null) return false;
+        if (System.currentTimeMillis() - t > WRITING_TIMEOUT) {
+            writing.remove(uuid);
+            return false;
+        }
+        return true;
     }
 
     public static void startWriting(Player player) {
@@ -20,8 +34,8 @@ public class WritersBank extends HashSet<UUID> {
     }
 
     public static void startWriting(UUID uuid) {
-        INSTANCE.add(uuid);
-        INSTANCE.seen.add(uuid);
+        writing.put(uuid, System.currentTimeMillis());
+        seen.add(uuid);
     }
 
     public static void stopWriting(Player player) {
@@ -29,7 +43,7 @@ public class WritersBank extends HashSet<UUID> {
     }
 
     public static void stopWriting(UUID uuid) {
-        INSTANCE.remove(uuid);
+        writing.remove(uuid);
     }
 
     public static boolean alreadyWrote(Player player) {
@@ -37,6 +51,6 @@ public class WritersBank extends HashSet<UUID> {
     }
 
     public static boolean alreadyWrote(UUID uuid) {
-        return INSTANCE.seen.contains(uuid);
+        return seen.contains(uuid);
     }
 }
