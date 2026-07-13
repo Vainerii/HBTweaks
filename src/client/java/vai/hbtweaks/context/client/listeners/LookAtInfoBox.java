@@ -100,6 +100,12 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
     }
 
     private static void render(GuiGraphicsExtractor graphics, DeltaTracker tickDelta) {
+        try {
+            renderBox(graphics);
+        } catch (Exception ignored) { }
+    }
+
+    private static void renderBox(GuiGraphicsExtractor graphics) {
         List<Component> cached = lines;
         if (cached == null || cached.isEmpty())
             return;

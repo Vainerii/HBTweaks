@@ -300,19 +300,24 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     }
 
     private static void render(GuiGraphicsExtractor graphics, DeltaTracker tickDelta) {
-        boolean leftDown = hasPerm() && GLFW.glfwGetMouseButton(
-                Minecraft.getInstance().getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
-        if (!leftDown) effectsRequestedFor = null;
+        try {
+            boolean leftDown = hasPerm() && GLFW.glfwGetMouseButton(
+                    Minecraft.getInstance().getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+            if (!leftDown) effectsRequestedFor = null;
 
-        if (contextMenu != null
-                && (!contextMenu.isVisible() || Minecraft.getInstance().mouseHandler.isMouseGrabbed())) {
-            contextMenu.close();
-            contextMenu = null;
+            if (contextMenu != null
+                    && (!contextMenu.isVisible() || Minecraft.getInstance().mouseHandler.isMouseGrabbed())) {
+                contextMenu.close();
+                contextMenu = null;
+            }
+            if (contextMenu != null)
+                contextMenu.render(graphics, tickDelta);
+            else
+                renderHoverName(graphics, leftDown);
+        } catch (Exception e) {
+            HBTweaksContext.LOGGER.error("Failed to render context menu / hover box", e);
+            dispose();
         }
-        if (contextMenu != null)
-            contextMenu.render(graphics, tickDelta);
-        else
-            renderHoverName(graphics, leftDown);
     }
 
     private static void renderHoverName(GuiGraphicsExtractor graphics, boolean leftDown) {
