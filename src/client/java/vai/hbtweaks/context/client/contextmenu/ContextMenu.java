@@ -3,6 +3,8 @@ package vai.hbtweaks.context.client.contextmenu;
 import java.util.List;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -18,9 +20,11 @@ import net.minecraft.world.item.ItemStack;
 import vai.hbtweaks.context.HBTweaksContext;
 import vai.hbtweaks.context.client.config.HBConfig;
 import vai.hbtweaks.context.client.contextmenu.editor.AddCommandScreen;
+import vai.hbtweaks.context.client.contextmenu.editor.AddScriptScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.AddSubmenuScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
 import vai.hbtweaks.context.client.listeners.ContextMenuTrigger;
+import vai.hbtweaks.context.client.script.ScriptRunner;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -40,10 +44,19 @@ public class ContextMenu {
     private static final int TOGGLE_SIZE = 9;
     private static final int TOGGLE_GAP = 1;
 
-    private final int itemHeight;
-    private final int paddingX;
-    private final int arrowRightPad;
-    private final int textOffsetY;
+    private static final int EDIT_CELL = 8;
+    private static final int EDIT_CLUSTER_W = EDIT_CELL * 3;
+
+    private enum EditControl { UP, DOWN, INTO, TO_PARENT, EDIT, DELETE }
+
+    private final boolean minimalStyle;
+
+    // Minimal style is temporarily ignored while editing
+    private boolean minimal() { return this.minimalStyle && !editMode; }
+    private int itemHeight() { return minimal() ? 12 : 16; }
+    private int paddingX() { return minimal() ? 4 : 6; }
+    private int arrowRightPad() { return minimal() ? 6 : 8; }
+    private int textOffsetY() { return minimal() ? 2 : 4; }
 
     private int x;
     private int y;
@@ -65,11 +78,7 @@ public class ContextMenu {
         this.y = y;
         this.player = target;
 
-        boolean minimal = HBConfig.get().menuStyle == HBConfig.MenuStyle.MINIMAL;
-        this.itemHeight = minimal ? 12 : 16;
-        this.paddingX = minimal ? 4 : 6;
-        this.arrowRightPad = minimal ? 6 : 8;
-        this.textOffsetY = minimal ? 2 : 4;
+        this.minimalStyle = HBConfig.get().menuStyle == HBConfig.MenuStyle.MINIMAL;
     }
 
     public ContextMenu addActionItem(String label, Runnable action) {
@@ -90,6 +99,7 @@ public class ContextMenu {
     public ContextMenu markLastDeletable(MenuLocation.DeleteRef ref) {
         if (!this.itemDelete.isEmpty())
             this.itemDelete.set(this.itemDelete.size() - 1, ref);
+        recalcWidth();
         return this;
     }
 
@@ -104,6 +114,10 @@ public class ContextMenu {
             Minecraft mc = Minecraft.getInstance();
             mc.setScreen(new AddCommandScreen(mc.screen, container));
         });
+        sub.addActionItem(Component.translatable("hbtweaks.context.editor.add_script"), () -> {
+            Minecraft mc = Minecraft.getInstance();
+            mc.setScreen(new AddScriptScreen(mc.screen, container));
+        });
         return push(new AddMenuItem(
                 Component.translatable("hbtweaks.context.editor.add").withStyle(ChatFormatting.GREEN), sub));
     }
@@ -115,8 +129,7 @@ public class ContextMenu {
     }
 
     public ContextMenu withEditToggle() {
-        this.hasEditToggle = EDIT_ENABLED
-                && !vai.hbtweaks.context.client.config.HBConfig.get().hidePlusBox;
+        this.hasEditToggle = EDIT_ENABLED && !HBConfig.get().hidePlusBox;
         return this;
     }
 
@@ -131,7 +144,7 @@ public class ContextMenu {
     }
 
     private int toggleY() {
-        return this.y + effectiveItemCount() * this.itemHeight + TOGGLE_GAP;
+        return this.y + effectiveItemCount() * itemHeight() + TOGGLE_GAP;
     }
 
     private boolean isInsideToggle(int mx, int my) {
@@ -174,6 +187,10 @@ public class ContextMenu {
 
     public ContextMenu addItemStackItem(ItemStack stack) {
         return push(new ItemStackMenuItem(stack));
+    }
+
+    public ContextMenu addScriptItem(Component label, java.util.List<String> lines) {
+        return push(new ScriptItem(label, new ArrayList<>(lines), player));
     }
 
     public ContextMenu addLinkItem(String label, String url) {
@@ -221,8 +238,10 @@ public class ContextMenu {
 
         Minecraft mc = Minecraft.getInstance();
 
+        recalcWidth(); // bc of edit mode
+
         int itemCount = effectiveItemCount();
-        int itemsHeight = itemCount * this.itemHeight;
+        int itemsHeight = itemCount * itemHeight();
         int footprint = itemsHeight + (this.hasEditToggle ? TOGGLE_GAP + TOGGLE_SIZE : 0);
 
         int screenW = mc.getWindow().getGuiScaledWidth();
@@ -247,7 +266,7 @@ public class ContextMenu {
 
         for (int i = 0; i < itemCount; i++) {
             MenuItem item = this.items.get(i);
-            int itemY = this.y + i * this.itemHeight;
+            int itemY = this.y + i * itemHeight();
 
             boolean hovered = isInsideRow(mouseX, mouseY, itemY);
             if (item instanceof InfoItem) {
@@ -255,32 +274,35 @@ public class ContextMenu {
             }
 
             if (hovered) {
-                graphics.fill(this.x, itemY, this.x + this.width, itemY + this.itemHeight, ContextMenu.COLOR_HOVER);
+                graphics.fill(this.x, itemY, this.x + this.width, itemY + itemHeight(), ContextMenu.COLOR_HOVER);
             }
 
             int textColor = hovered ? ContextMenu.COLOR_TEXT_HOVER : ContextMenu.COLOR_TEXT;
 
             if (item instanceof ItemStackMenuItem ism) {
-                graphics.item(ism.stack, this.x + this.paddingX, itemY);
+                graphics.item(ism.stack, this.x + paddingX(), itemY);
                 graphics.text(mc.font, item.getLabel(),
-                        this.x + this.paddingX + ContextMenu.ICON_SIZE + 2,
-                        itemY + this.textOffsetY, textColor, false);
+                        this.x + paddingX() + ContextMenu.ICON_SIZE + 2,
+                        itemY + textOffsetY(), textColor, false);
                 if (hovered) {
                     hoveredStack = ism.stack; // on mémorise, on ne rend pas encore
                 }
             } else {
                 graphics.text(mc.font, item.getLabel(),
-                        this.x + this.paddingX, itemY + this.textOffsetY, textColor, false);
+                        this.x + paddingX(), itemY + textOffsetY(), textColor, false);
             }
+            boolean showCluster = editMode && this.itemDelete.get(i) != null;
 
             ContextMenu sub = submenuOf(item);
             if (sub != null) {
-                graphics.text(mc.font, ">", this.x + this.width - this.arrowRightPad, itemY + this.textOffsetY, textColor, false);
+                drawSubmenuArrow(graphics, itemY, showCluster);
                 if (hovered) {
                     nextSubmenu = sub;
                     nextSubmenuIndex = i;
                 }
             }
+            if (showCluster)
+                drawEditCluster(graphics, mc, i, itemY, mouseX, mouseY);
         }
 
         if (this.hasEditToggle) {
@@ -301,7 +323,7 @@ public class ContextMenu {
                     this.openSubmenu.close();
                 this.openSubmenu = nextSubmenu;
                 this.openSubmenu.x = this.x + this.width;
-                this.openSubmenu.y = this.y + nextSubmenuIndex * this.itemHeight;
+                this.openSubmenu.y = this.y + nextSubmenuIndex * itemHeight();
                 this.openSubmenu.open();
             }
         } else {
@@ -342,9 +364,12 @@ public class ContextMenu {
             return false;
         }
 
+        if (handleEditClick(mx, my))
+            return false; // keep menu open
+
         int itemCount = effectiveItemCount();
         for (int i = 0; i < itemCount; i++) {
-            int itemY = this.y + i * this.itemHeight;
+            int itemY = this.y + i * itemHeight();
             if (isInsideRow(mx, my, itemY)) {
                 MenuItem item = this.items.get(i);
                 if (item instanceof CheckboxItem) {
@@ -371,7 +396,7 @@ public class ContextMenu {
         return mx >= this.x
                 && mx < this.x + this.width
                 && my >= this.y
-                && my < this.y + effectiveItemCount() * this.itemHeight;
+                && my < this.y + effectiveItemCount() * itemHeight();
     }
 
     public boolean containsMouseRecursive(int mx, int my) {
@@ -395,7 +420,7 @@ public class ContextMenu {
         }
         int itemCount = effectiveItemCount();
         for (int i = 0; i < itemCount; i++) {
-            if (isInsideRow(mx, my, this.y + i * this.itemHeight))
+            if (isInsideRow(mx, my, this.y + i * itemHeight()))
                 return this.itemDelete.get(i);
         }
         return null;
@@ -405,22 +430,139 @@ public class ContextMenu {
         return mx >= this.x
                 && mx < this.x + this.width
                 && my >= rowY
-                && my < rowY + this.itemHeight;
+                && my < rowY + itemHeight();
+    }
+
+    private static final int EDIT_ARROW_W = 9;
+
+    private int editClusterX(int i) {
+        return this.x + this.width - EDIT_CLUSTER_W - 1 - EDIT_ARROW_W;
+    }
+
+    private boolean canMoveInto(int i) {
+        return i > 0
+                && this.itemDelete.get(i - 1) != null
+                && this.items.get(i - 1) instanceof SubmenuItem;
+    }
+
+    private boolean canMoveToParent(int i) {
+        MenuLocation.DeleteRef ref = this.itemDelete.get(i);
+        return ref != null && ref.container().hasParent();
+    }
+
+    private boolean isEditable(int i) {
+        MenuItem m = this.items.get(i);
+        return m instanceof CommandItem || m instanceof ScriptItem || m instanceof SubmenuItem;
+    }
+
+    private boolean hasSwapNeighbour(int i, int delta) {
+        int j = i + delta;
+        if (j < 0 || j >= this.items.size())
+            return false;
+        MenuLocation.DeleteRef me = this.itemDelete.get(i);
+        MenuLocation.DeleteRef other = this.itemDelete.get(j);
+        return other != null && me != null && other.container() == me.container();
+    }
+
+    private boolean canMoveUp(int i) { return hasSwapNeighbour(i, -1); }
+    private boolean canMoveDown(int i) { return hasSwapNeighbour(i, 1); }
+
+    private EditControl hitEditControl(int mx, int my, int i) {
+        if (!editMode || i < 0 || i >= this.itemDelete.size() || this.itemDelete.get(i) == null)
+            return null;
+        int itemY = this.y + i * itemHeight();
+        int cx = editClusterX(i);
+        int half = itemHeight() / 2;
+        boolean col0 = mx >= cx && mx < cx + EDIT_CELL;
+        boolean col1 = mx >= cx + EDIT_CELL && mx < cx + 2 * EDIT_CELL;
+        boolean col2 = mx >= cx + 2 * EDIT_CELL && mx < cx + EDIT_CLUSTER_W;
+        boolean top = my >= itemY && my < itemY + half;
+        boolean bot = my >= itemY + half && my < itemY + itemHeight();
+        if (col0 && top) return canMoveInto(i) ? EditControl.INTO : null;
+        if (col0 && bot) return canMoveToParent(i) ? EditControl.TO_PARENT : null;
+        if (col1 && top) return canMoveUp(i) ? EditControl.UP : null;
+        if (col1 && bot) return canMoveDown(i) ? EditControl.DOWN : null;
+        if (col2 && top) return isEditable(i) ? EditControl.EDIT : null;
+        if (col2 && bot) return EditControl.DELETE;
+        return null;
+    }
+
+    private void drawEditCluster(GuiGraphicsExtractor graphics, Minecraft mc, int i, int itemY, int mouseX, int mouseY) {
+        int cx = editClusterX(i);
+        int half = itemHeight() / 2;
+        EditControl hover = hitEditControl(mouseX, mouseY, i);
+        if (canMoveInto(i))
+            drawIcon(graphics, ICON_INTO, cx, itemY, half, hover == EditControl.INTO, -1);
+        if (canMoveToParent(i))
+            drawIcon(graphics, ICON_TO_PARENT, cx, itemY + half, half, hover == EditControl.TO_PARENT, -1);
+        if (canMoveUp(i))
+            drawIcon(graphics, ICON_UP, cx + EDIT_CELL, itemY, half, hover == EditControl.UP, -1);
+        if (canMoveDown(i))
+            drawIcon(graphics, ICON_DOWN, cx + EDIT_CELL, itemY + half, half, hover == EditControl.DOWN, -1);
+        if (isEditable(i))
+            drawIcon(graphics, ICON_EDIT, cx + 2 * EDIT_CELL, itemY, half, hover == EditControl.EDIT, -1);
+        drawIcon(graphics, ICON_DELETE, cx + 2 * EDIT_CELL, itemY + half, half, hover == EditControl.DELETE, -1);
+    }
+
+    private static Identifier icon(String name) {
+        return Identifier.fromNamespaceAndPath("hb-tweaks-context", "icon/" + name);
+    }
+
+    private static final Identifier ICON_INTO = icon("up_right_arrow");
+    private static final Identifier ICON_TO_PARENT = icon("down_left_arrow");
+    private static final Identifier ICON_UP = icon("move_up");
+    private static final Identifier ICON_DOWN = icon("move_down");
+    private static final Identifier ICON_EDIT = icon("edit");
+    private static final Identifier ICON_DELETE = icon("remove");
+    private static final Identifier ICON_SUBMENU = icon("right_arrow");
+
+    private void drawSubmenuArrow(GuiGraphicsExtractor graphics, int itemY, boolean besideCluster) {
+        int size = Math.min(itemHeight() - 4, 7);
+        int ax = besideCluster ? this.x + this.width - size - 1 : this.x + this.width - arrowRightPad();
+        int ay = itemY + (itemHeight() - size) / 2;
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, ICON_SUBMENU, ax, ay, size, size);
+    }
+
+    private void drawIcon(GuiGraphicsExtractor graphics, Identifier id, int cellX, int cellY, int cellH, boolean hover, int tint) {
+        if (hover)
+            graphics.fill(cellX, cellY, cellX + EDIT_CELL, cellY + cellH, 0x40FFFFFF);
+        int s = Math.min(EDIT_CELL, cellH) - 1;
+        int x = cellX + (EDIT_CELL - s + 1) / 2;
+        int y = cellY + (cellH - s + 1) / 2;
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, id, x, y, s, s);
+    }
+
+    private boolean handleEditClick(int mx, int my) {
+        if (!editMode) return false;
+        for (int i = 0; i < effectiveItemCount(); i++) {
+            EditControl ctrl = hitEditControl(mx, my, i);
+            if (ctrl == null) continue;
+            MenuLocation.DeleteRef ref = this.itemDelete.get(i);
+            switch (ctrl) {
+                case UP -> { ref.container().move(ref.index(), -1); ContextMenuTrigger.rebuildAfterEdit(); }
+                case DOWN -> { ref.container().move(ref.index(), 1); ContextMenuTrigger.rebuildAfterEdit(); }
+                case INTO -> { ref.container().moveIntoSubmenuAbove(ref.index()); ContextMenuTrigger.rebuildAfterEdit(); }
+                case TO_PARENT -> { ref.container().moveToParent(ref.index()); ContextMenuTrigger.rebuildAfterEdit(); }
+                case EDIT -> ContextMenuTrigger.requestEdit(ref);
+                case DELETE -> ContextMenuTrigger.requestDelete(ref);
+            }
+            return true;
+        }
+        return false;
     }
 
     private void recalcWidth() {
         Minecraft mc = Minecraft.getInstance();
         int max = 0;
-        for (MenuItem item : this.items) {
+        for (int i = 0; i < this.items.size(); i++) {
+            MenuItem item = this.items.get(i);
             int lw = mc.font.width(item.getLabel());
-            if (submenuOf(item) != null)
-                lw += this.arrowRightPad + 4;
-            if (item instanceof ItemStackMenuItem)
-                lw += ContextMenu.ICON_SIZE; // place pour l'icône 16x16
-            if (lw > max)
-                max = lw;
+            if (submenuOf(item) != null) lw += arrowRightPad() + 4;
+            if (item instanceof ItemStackMenuItem) lw += ContextMenu.ICON_SIZE; // place pour l'icône 16x16
+            if (editMode && i < this.itemDelete.size() && this.itemDelete.get(i) != null) lw += EDIT_CLUSTER_W + EDIT_ARROW_W + 2;
+            if (lw > max) max = lw;
         }
-        this.width = Math.max(ContextMenu.MIN_WIDTH, max + this.paddingX * 2);
+        this.width = Math.max(ContextMenu.MIN_WIDTH, max + paddingX() * 2);
     }
 
     private interface MenuItem {
@@ -517,6 +659,28 @@ public class ContextMenu {
             c = c.replace("%myuuid%", me.getStringUUID());
 
         return c;
+    }
+
+    private static final class ScriptItem implements MenuItem {
+        private final Component label;
+        private final java.util.List<String> lines;
+        private final Player player;
+
+        ScriptItem(Component label, java.util.List<String> lines, Player player) {
+            this.label = label;
+            this.lines = lines;
+            this.player = player;
+        }
+
+        @Override
+        public Component getLabel() {
+            return this.label;
+        }
+
+        @Override
+        public void onClick() {
+            ScriptRunner.enqueue(this.lines, this.player);
+        }
     }
 
     private static final class SubmenuItem implements MenuItem {

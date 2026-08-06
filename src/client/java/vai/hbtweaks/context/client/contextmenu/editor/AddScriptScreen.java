@@ -3,13 +3,18 @@ package vai.hbtweaks.context.client.contextmenu.editor;
 import dev.lambdaurora.spruceui.Position;
 import dev.lambdaurora.spruceui.widget.SpruceLabelWidget;
 import dev.lambdaurora.spruceui.widget.container.SpruceContainerWidget;
+import dev.lambdaurora.spruceui.widget.text.SpruceTextAreaWidget;
 import dev.lambdaurora.spruceui.widget.text.SpruceTextFieldWidget;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
-public class AddCommandScreen extends EditorScreen {
+import java.util.ArrayList;
+import java.util.List;
+
+public class AddScriptScreen extends EditorScreen {
     private static final String[][] TAGS = {
+            {"[wait:5s]", "hbtweaks.context.editor.tag.wait"},
             {"%mcname%", "hbtweaks.context.editor.tag.mcname"},
             {"%rpname%", "hbtweaks.context.editor.tag.rpname"},
             {"%blockpos%", "hbtweaks.context.editor.tag.blockpos"},
@@ -25,20 +30,20 @@ public class AddCommandScreen extends EditorScreen {
     private final MenuLocation location;
     private final int editIndex;
     private final String initialName;
-    private final String initialCommand;
+    private final List<String> initialLines;
     private SpruceTextFieldWidget nameField;
-    private SpruceTextFieldWidget commandField;
+    private SpruceTextAreaWidget scriptArea;
 
-    public AddCommandScreen(Screen parent, MenuLocation location) {
-        this(parent, location, -1, "", "");
+    public AddScriptScreen(Screen parent, MenuLocation location) {
+        this(parent, location, -1, "", List.of());
     }
 
-    public AddCommandScreen(Screen parent, MenuLocation location, int editIndex, String name, String command) {
-        super(parent, Component.translatable("hbtweaks.context.editor.add_command"), 460, 160);
+    public AddScriptScreen(Screen parent, MenuLocation location, int editIndex, String name, List<String> lines) {
+        super(parent, Component.translatable("hbtweaks.context.editor.add_script"), 460, 200);
         this.location = location;
         this.editIndex = editIndex;
         this.initialName = name;
-        this.initialCommand = command;
+        this.initialLines = lines;
     }
 
     @Override
@@ -48,28 +53,25 @@ public class AddCommandScreen extends EditorScreen {
         int y = pad + 16;
 
         Component nameLabel = Component.translatable("hbtweaks.context.editor.name");
-        Component commandLabel = Component.translatable("hbtweaks.context.editor.command");
+        Component scriptLabel = Component.translatable("hbtweaks.context.editor.script");
 
         panel.addChild(new SpruceLabelWidget(Position.of(panel, pad, y), nameLabel, leftW));
         y += 11;
-        this.nameField = new SpruceTextFieldWidget(Position.of(panel, pad, y),
-                leftW, EditorStyle.FIELD_H, nameLabel);
+        this.nameField = new SpruceTextFieldWidget(Position.of(panel, pad, y), leftW, EditorStyle.FIELD_H, nameLabel);
         panel.addChild(this.nameField);
         y += EditorStyle.FIELD_H + EditorStyle.ROW_GAP;
 
-        panel.addChild(new SpruceLabelWidget(Position.of(panel, pad, y), commandLabel, leftW));
+        panel.addChild(new SpruceLabelWidget(Position.of(panel, pad, y), scriptLabel, leftW));
         y += 11;
-        this.commandField = new SpruceTextFieldWidget(Position.of(panel, pad, y),
-                leftW, EditorStyle.FIELD_H, commandLabel);
-        this.commandField.setText("/");
-        this.commandField.setTextPredicate(s -> s.startsWith("/"));
-        panel.addChild(this.commandField);
+        int areaH = 80;
+        this.scriptArea = new SpruceTextAreaWidget(Position.of(panel, pad, y), leftW, areaH, scriptLabel);
+        panel.addChild(this.scriptArea);
+        y += areaH + EditorStyle.ROW_GAP + 2;
 
         if (this.editIndex >= 0) {
             this.nameField.setText(this.initialName);
-            this.commandField.setText("/" + this.initialCommand);
+            this.scriptArea.setLines(new ArrayList<>(this.initialLines));
         }
-        y += EditorStyle.FIELD_H + EditorStyle.ROW_GAP + 2;
 
         int btnW = (leftW - EditorStyle.ROW_GAP) / 2;
         panel.addChild(new EditorButton(Position.of(panel, pad, y), btnW, EditorStyle.BTN_H,
@@ -80,8 +82,7 @@ public class AddCommandScreen extends EditorScreen {
         int csX = pad + leftW + pad;
         int csW = this.panelW - csX - pad;
         int csY = pad + 16;
-        SpruceLabelWidget csTitle = new SpruceLabelWidget(Position.of(panel, csX, csY),
-                Component.translatable("hbtweaks.context.editor.tags"), csW);
+        SpruceLabelWidget csTitle = new SpruceLabelWidget(Position.of(panel, csX, csY), Component.translatable("hbtweaks.context.editor.tags"), csW);
         csTitle.setColor(EditorStyle.TEXT);
         panel.addChild(csTitle);
         csY += 12;
@@ -96,14 +97,16 @@ public class AddCommandScreen extends EditorScreen {
 
     private void submit() {
         String name = this.nameField.getText().trim();
-        String command = this.commandField.getText().trim();
-        if (command.startsWith("/"))
-            command = command.substring(1).trim();
-        if (name.isEmpty() || command.isEmpty()) return;
+        List<String> lines = new ArrayList<>();
+        for (String line : this.scriptArea.getLines()) {
+            String l = line.replace("\n", "").stripTrailing();
+            if (!l.isBlank()) lines.add(l);
+        }
+        if (name.isEmpty() || lines.isEmpty()) return;
         if (this.editIndex >= 0)
-            this.location.replaceCommand(this.editIndex, name, command);
+            this.location.replaceScript(this.editIndex, name, lines);
         else
-            this.location.addCommand(name, command);
+            this.location.addScript(name, lines);
         this.done();
     }
 }

@@ -8,6 +8,7 @@ import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -62,8 +63,15 @@ public class CustomContextMenuLoader {
             menu.addSubmenuItem(label, submenu);
             menu.markLastDeletable(new MenuLocation.DeleteRef(container, index, labelStr));
         } else if (entry.containsKey("command")) {
-            String command = (String) entry.get("command");
-            menu.addCommandItem(label, command);
+            Object command = entry.get("command");
+            if (command instanceof List<?> list) {
+                List<String> lines = new ArrayList<>();
+                for (Object o : list)
+                    lines.add(String.valueOf(o));
+                menu.addScriptItem(label, lines);
+            } else {
+                menu.addCommandItem(label, String.valueOf(command));
+            }
             menu.markLastDeletable(new MenuLocation.DeleteRef(container, index, labelStr));
         }
     }

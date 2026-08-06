@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
+import vai.hbtweaks.context.client.listeners.ChatCommandProtector;
 import vai.hbtweaks.context.client.screen.CursorScreen;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
@@ -21,6 +22,7 @@ import vai.hbtweaks.context.client.network.EffectPayloads;
 import vai.hbtweaks.context.client.network.MessagePayloads;
 import vai.hbtweaks.context.client.mouse.MouseTracker;
 import vai.hbtweaks.context.client.mouse.MouseTrackerEntityClickUpCallback;
+import vai.hbtweaks.context.client.script.ScriptRunner;
 
 import java.io.File;
 
@@ -47,6 +49,8 @@ public class HBTweaksContextClient implements ClientModInitializer {
 		MessagePayloads.init();
 		EffectPayloads.init();
 		WritingStatusSender.init();
+		ScriptRunner.init();
+		ChatCommandProtector.init();
 
 		MouseTracker.register();
 		MouseTrackerEntityClickUpCallback.EVENT.register(cmt);
@@ -58,17 +62,17 @@ public class HBTweaksContextClient implements ClientModInitializer {
 			}
 		});
 
-		ScreenEvents.BEFORE_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
+		ScreenEvents.BEFORE_INIT.register((_, screen, _, _) -> {
 			if (screen instanceof ChatScreen || screen instanceof CursorScreen) {
 				ScreenMouseEvents.afterMouseClick(screen).register(cmt);
-				ScreenKeyboardEvents.afterKeyPress(screen).register((s, keyEvent) -> {
-					if (keyEvent.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_DELETE)
+				ScreenKeyboardEvents.afterKeyPress(screen).register((_, keyEvent) -> {
+					if (keyEvent.key() == GLFW.GLFW_KEY_DELETE)
 						ContextMenuTrigger.handleDelete();
 				});
-				ScreenEvents.afterExtract(screen).register((s, graphics, mouseX, mouseY, delta) -> {
+				ScreenEvents.afterExtract(screen).register((_, graphics, _, _, _) -> {
 					cmt.renderOnScreen(graphics, DeltaTracker.ZERO);
 				});
-				ScreenEvents.remove(screen).register(s -> ContextMenuTrigger.dispose());
+				ScreenEvents.remove(screen).register(_ -> ContextMenuTrigger.dispose());
 			}
 		});
 

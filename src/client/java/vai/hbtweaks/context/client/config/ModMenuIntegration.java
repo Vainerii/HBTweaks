@@ -4,6 +4,7 @@ import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
 import dev.isxander.yacl3.api.ConfigCategory;
 import dev.isxander.yacl3.api.Option;
+import dev.isxander.yacl3.api.OptionDescription;
 import dev.isxander.yacl3.api.YetAnotherConfigLib;
 import dev.isxander.yacl3.api.controller.EnumControllerBuilder;
 import dev.isxander.yacl3.api.controller.TickBoxControllerBuilder;
@@ -23,6 +24,8 @@ public class ModMenuIntegration implements ModMenuApi {
     private static final Component o_plus_tt = Component.translatable("hbtweaks.context.config.hide_plus.tooltip");
     private static final Component o_menu_style = Component.translatable("hbtweaks.context.config.menu_style");
     private static final Component o_menu_style_tt = Component.translatable("hbtweaks.context.config.menu_style.tooltip");
+    private static final Component o_cmd_protect = Component.translatable("hbtweaks.context.config.chat_command_protector");
+    private static final Component o_cmd_protect_tt = Component.translatable("hbtweaks.context.config.chat_command_protector.tooltip");
 
     private static final Component v_style_normal = Component.translatable("hbtweaks.context.config.menu_style.normal");
     private static final Component v_style_minimal = Component.translatable("hbtweaks.context.config.menu_style.minimal");
@@ -45,7 +48,7 @@ public class ModMenuIntegration implements ModMenuApi {
                 .name(c_general)
                 .option(Option.<HBConfig.HoverLocation>createBuilder()
                         .name(o_hover)
-                        .description(dev.isxander.yacl3.api.OptionDescription.of(o_hover_tt))
+                        .description(OptionDescription.of(o_hover_tt))
                         .binding(def.hoverLocation, () -> cfg.hoverLocation, v -> cfg.hoverLocation = v)
                         .controller(opt -> EnumControllerBuilder.create(opt)
                                 .enumClass(HBConfig.HoverLocation.class)
@@ -53,7 +56,7 @@ public class ModMenuIntegration implements ModMenuApi {
                         .build())
                 .option(Option.<HBConfig.BoxPosition>createBuilder()
                         .name(o_box)
-                        .description(dev.isxander.yacl3.api.OptionDescription.of(o_box_tt))
+                        .description(OptionDescription.of(o_box_tt))
                         .binding(def.boxPosition, () -> cfg.boxPosition, v -> cfg.boxPosition = v)
                         .controller(opt -> EnumControllerBuilder.create(opt)
                                 .enumClass(HBConfig.BoxPosition.class)
@@ -61,17 +64,23 @@ public class ModMenuIntegration implements ModMenuApi {
                         .build())
                 .option(Option.<Boolean>createBuilder()
                         .name(o_plus)
-                        .description(dev.isxander.yacl3.api.OptionDescription.of(o_plus_tt))
+                        .description(OptionDescription.of(o_plus_tt))
                         .binding(def.hidePlusBox, () -> cfg.hidePlusBox, v -> cfg.hidePlusBox = v)
                         .controller(TickBoxControllerBuilder::create)
                         .build())
                 .option(Option.<HBConfig.MenuStyle>createBuilder()
                         .name(o_menu_style)
-                        .description(dev.isxander.yacl3.api.OptionDescription.of(o_menu_style_tt))
+                        .description(OptionDescription.of(o_menu_style_tt))
                         .binding(def.menuStyle, () -> cfg.menuStyle, v -> cfg.menuStyle = v)
                         .controller(opt -> EnumControllerBuilder.create(opt)
                                 .enumClass(HBConfig.MenuStyle.class)
                                 .formatValue(ModMenuIntegration::menuStyleLabel))
+                        .build())
+                .option(Option.<Boolean>createBuilder()
+                        .name(o_cmd_protect)
+                        .description(OptionDescription.of(o_cmd_protect_tt))
+                        .binding(def.chatCommandProtector, () -> cfg.chatCommandProtector, v -> cfg.chatCommandProtector = v)
+                        .controller(TickBoxControllerBuilder::create)
                         .build())
                 .build();
 

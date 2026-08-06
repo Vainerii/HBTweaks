@@ -33,4 +33,5 @@ public class HBConfig {
     @SerialEntry public MenuStyle menuStyle = MenuStyle.NORMAL;
     @SerialEntry public boolean shareTyping = true;
     //@SerialEntry public boolean showMyName = true;
+    @SerialEntry public boolean chatCommandProtector = false;
 }

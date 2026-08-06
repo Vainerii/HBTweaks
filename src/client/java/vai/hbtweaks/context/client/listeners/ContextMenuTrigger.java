@@ -28,6 +28,9 @@ import vai.hbtweaks.context.client.contextmenu.ContextMenu;
 import vai.hbtweaks.context.client.effects.EffectsBank;
 import vai.hbtweaks.context.client.network.EffectPayloads;
 import vai.hbtweaks.context.client.contextmenu.CustomContextMenuLoader;
+import vai.hbtweaks.context.client.contextmenu.editor.AddCommandScreen;
+import vai.hbtweaks.context.client.contextmenu.editor.AddScriptScreen;
+import vai.hbtweaks.context.client.contextmenu.editor.AddSubmenuScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.DeleteConfirmScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
 import vai.hbtweaks.context.client.keyboard.WritersBank;
@@ -51,6 +54,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 {
 
     private static ContextMenu contextMenu = null;
+    private static Runnable rebuilder = null;
     private static UUID effectsRequestedFor = null;
 
     private static ContextMenuTrigger instance;
@@ -152,16 +156,6 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
             else
                 context.addItemStackItem(item);
         }
-        return context;
-    }
-
-    // TODO temporary: manual writers-list toggling for testing
-    private ContextMenu makeTestContextMenu(Player player) {
-        ContextMenu context = new ContextMenu(0, 0, player);
-        context.addActionItem(Component.literal("make writer").withStyle(ChatFormatting.GREEN),
-                () -> WritersBank.startWriting(player));
-        context.addActionItem(Component.literal("stop writer").withStyle(ChatFormatting.RED),
-                () -> WritersBank.stopWriting(player));
         return context;
     }
 
@@ -268,10 +262,13 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
             try {
                 Player targetPlayer = firstVisiblePlayer(list);
                 if (targetPlayer == null) {
-                    if (ContextMenuTrigger.contextMenu != null)
-                        ContextMenuTrigger.contextMenu.close();
-                    ContextMenuTrigger.contextMenu = makeSelfContextMenu(mc.player, x, y);
-                    ContextMenuTrigger.contextMenu.open();
+                    rebuilder = () -> {
+                        if (ContextMenuTrigger.contextMenu != null)
+                            ContextMenuTrigger.contextMenu.close();
+                        ContextMenuTrigger.contextMenu = makeSelfContextMenu(Minecraft.getInstance().player, x, y);
+                        ContextMenuTrigger.contextMenu.open();
+                    };
+                    rebuilder.run();
                     return;
                 }
                 if (!isReal(targetPlayer)) return;
@@ -312,6 +309,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
             ContextMenuTrigger.contextMenu.addAddItem(new MenuLocation(CUSTOM_MENU, List.of()));
             ContextMenuTrigger.contextMenu.withEditToggle();
             ContextMenuTrigger.contextMenu.open();
+            rebuilder = () -> openForPlayer(targetPlayer, x, y, loaded);
         } catch (Exception e) {
             HBTweaksContext.LOGGER.error("Failed to open context menu", e);
             dispose();
@@ -329,6 +327,43 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         if (instance == null || mc.level == null)
             return;
         instance.openForPlayer(new RemotePlayer(mc.level, profile), x, y, false);
+    }
+
+    public static void rebuildAfterEdit() {
+        if (rebuilder == null) return;
+        try {
+            rebuilder.run();
+        } catch (Exception e) {
+            HBTweaksContext.LOGGER.error("Failed to rebuild context menu", e);
+            dispose();
+        }
+    }
+
+    public static void requestDelete(MenuLocation.DeleteRef ref) {
+        Minecraft mc = Minecraft.getInstance();
+        Screen parent = mc.screen;
+        dispose();
+        mc.setScreen(new DeleteConfirmScreen(parent, ref));
+    }
+
+    public static void requestEdit(MenuLocation.DeleteRef ref) {
+        Minecraft mc = Minecraft.getInstance();
+        Screen parent = mc.screen;
+        Map<String, Object> entry = ref.container().entryAt(ref.index());
+        if (entry == null) return;
+        String label = String.valueOf(entry.getOrDefault("label", ""));
+        Object cmd = entry.get("command");
+        dispose();
+        if (cmd instanceof List<?> list) {
+            List<String> lines = new java.util.ArrayList<>();
+            for (Object o : list)
+                lines.add(String.valueOf(o));
+            mc.setScreen(new AddScriptScreen(parent, ref.container(), ref.index(), label, lines));
+        } else if (cmd != null) {
+            mc.setScreen(new AddCommandScreen(parent, ref.container(), ref.index(), label, String.valueOf(cmd)));
+        } else if (entry.containsKey("submenu")) {
+            mc.setScreen(new AddSubmenuScreen(parent, ref.container(), ref.index(), label));
+        }
     }
 
     public static boolean isMenuOver(double mx, double my) {

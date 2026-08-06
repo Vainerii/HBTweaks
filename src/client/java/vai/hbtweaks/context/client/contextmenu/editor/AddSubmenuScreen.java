@@ -9,11 +9,19 @@ import net.minecraft.network.chat.Component;
 
 public class AddSubmenuScreen extends EditorScreen {
     private final MenuLocation location;
+    private final int editIndex;
+    private final String initialName;
     private SpruceTextFieldWidget nameField;
 
     public AddSubmenuScreen(Screen parent, MenuLocation location) {
+        this(parent, location, -1, "");
+    }
+
+    public AddSubmenuScreen(Screen parent, MenuLocation location, int editIndex, String name) {
         super(parent, Component.translatable("hbtweaks.context.editor.add_submenu"), 220, 92);
         this.location = location;
+        this.editIndex = editIndex;
+        this.initialName = name;
     }
 
     @Override
@@ -28,6 +36,8 @@ public class AddSubmenuScreen extends EditorScreen {
 
         this.nameField = new SpruceTextFieldWidget(Position.of(panel, pad, y),
                 innerW, EditorStyle.FIELD_H, nameLabel);
+        if (this.editIndex >= 0)
+            this.nameField.setText(this.initialName);
         panel.addChild(this.nameField);
         y += EditorStyle.FIELD_H + EditorStyle.ROW_GAP + 2;
 
@@ -41,7 +51,10 @@ public class AddSubmenuScreen extends EditorScreen {
     private void submit() {
         String name = this.nameField.getText().trim();
         if (name.isEmpty()) return;
-        this.location.addSubmenu(name);
+        if (this.editIndex >= 0)
+            this.location.rename(this.editIndex, name);
+        else
+            this.location.addSubmenu(name);
         this.done();
     }
 }

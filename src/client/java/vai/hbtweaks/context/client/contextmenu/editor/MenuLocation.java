@@ -34,6 +34,10 @@ public final class MenuLocation {
         return this.file;
     }
 
+    public boolean hasParent() {
+        return !this.path.isEmpty();
+    }
+
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> resolve(Map<String, Object> root) {
         List<Map<String, Object>> list = (List<Map<String, Object>>) root.get("menu");
@@ -42,6 +46,21 @@ public final class MenuLocation {
             list = (List<Map<String, Object>>) entry.get("submenu");
         }
         return list;
+    }
+
+    private List<Map<String, Object>> resolveParent(Map<String, Object> root) {
+        List<Map<String, Object>> list = (List<Map<String, Object>>) root.get("menu");
+        for (int i = 0; i < this.path.size() - 1; i++)
+            list = (List<Map<String, Object>>) list.get(this.path.get(i)).get("submenu");
+        return list;
+    }
+
+    public Map<String, Object> entryAt(int index) {
+        Map<String, Object> root = CustomContextMenuLoader.readYaml(this.file);
+        if (root == null) return null;
+        List<Map<String, Object>> list = resolve(root);
+        if (index < 0 || index >= list.size()) return null;
+        return list.get(index);
     }
 
     public void addSubmenu(String name) {
@@ -62,11 +81,83 @@ public final class MenuLocation {
         });
     }
 
+    public void addScript(String name, List<String> lines) {
+        edit(root -> {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("label", name);
+            entry.put("command", new ArrayList<>(lines));
+            resolve(root).add(entry);
+        });
+    }
+
     public void deleteAt(int index) {
         edit(root -> {
             List<Map<String, Object>> list = resolve(root);
             if (index >= 0 && index < list.size())
                 list.remove(index);
+        });
+    }
+
+    public void move(int index, int delta) {
+        edit(root -> {
+            List<Map<String, Object>> list = resolve(root);
+            int j = index + delta;
+            if (index < 0 || index >= list.size() || j < 0 || j >= list.size()) return;
+            Map<String, Object> tmp = list.get(index);
+            list.set(index, list.get(j));
+            list.set(j, tmp);
+        });
+    }
+
+    public void moveIntoSubmenuAbove(int index) {
+        edit(root -> {
+            List<Map<String, Object>> list = resolve(root);
+            if (index <= 0 || index >= list.size()) return;
+            Object sub = list.get(index - 1).get("submenu");
+            if (!(sub instanceof List)) return;
+            ((List<Map<String, Object>>) sub).add(list.remove(index));
+        });
+    }
+
+    public void moveToParent(int index) {
+        if (!hasParent()) return;
+        edit(root -> {
+            List<Map<String, Object>> list = resolve(root);
+            if (index < 0 || index >= list.size()) return;
+            Map<String, Object> moved = list.remove(index);
+            List<Map<String, Object>> parent = resolveParent(root);
+            int k = this.path.get(this.path.size() - 1);
+            parent.add(Math.min(k + 1, parent.size()), moved);
+        });
+    }
+
+    public void rename(int index, String name) {
+        edit(root -> {
+            List<Map<String, Object>> list = resolve(root);
+            if (index < 0 || index >= list.size()) return;
+            list.get(index).put("label", name);
+        });
+    }
+
+    public void replaceCommand(int index, String name, String command) {
+        edit(root -> {
+            List<Map<String, Object>> list = resolve(root);
+            if (index < 0 || index >= list.size()) return;
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("label", name);
+            entry.put("command", command);
+            list.set(index, entry);
+        });
+    }
+
+    public void replaceScript(int index, String name, List<String> lines) {
+        edit(root -> {
+            List<Map<String, Object>> list = resolve(root);
+            if (index < 0 || index >= list.size()) return;
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("label", name);
+            entry.put("command", new ArrayList<>(lines));
+            list.set(index, entry);
         });
     }
 
