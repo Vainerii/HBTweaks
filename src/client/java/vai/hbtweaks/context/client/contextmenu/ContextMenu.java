@@ -487,21 +487,26 @@ public class ContextMenu {
         return null;
     }
 
+    private static final int EDIT_ICON = 0xFFFFFFFF;
+    private static final int EDIT_ICON_DISABLED = 0xFF4A4A4A;
+    private static final int EDIT_ICON_DELETE = 0xFFE05555;
+
     private void drawEditCluster(GuiGraphicsExtractor graphics, Minecraft mc, int i, int itemY, int mouseX, int mouseY) {
         int cx = editClusterX(i);
         int half = itemHeight() / 2;
         EditControl hover = hitEditControl(mouseX, mouseY, i);
-        if (canMoveInto(i))
-            drawIcon(graphics, ICON_INTO, cx, itemY, half, hover == EditControl.INTO, -1);
-        if (canMoveToParent(i))
-            drawIcon(graphics, ICON_TO_PARENT, cx, itemY + half, half, hover == EditControl.TO_PARENT, -1);
-        if (canMoveUp(i))
-            drawIcon(graphics, ICON_UP, cx + EDIT_CELL, itemY, half, hover == EditControl.UP, -1);
-        if (canMoveDown(i))
-            drawIcon(graphics, ICON_DOWN, cx + EDIT_CELL, itemY + half, half, hover == EditControl.DOWN, -1);
-        if (isEditable(i))
-            drawIcon(graphics, ICON_EDIT, cx + 2 * EDIT_CELL, itemY, half, hover == EditControl.EDIT, -1);
-        drawIcon(graphics, ICON_DELETE, cx + 2 * EDIT_CELL, itemY + half, half, hover == EditControl.DELETE, -1);
+        drawIcon(graphics, ICON_INTO, cx, itemY, half, hover == EditControl.INTO,
+                canMoveInto(i) ? EDIT_ICON : EDIT_ICON_DISABLED);
+        drawIcon(graphics, ICON_TO_PARENT, cx, itemY + half, half, hover == EditControl.TO_PARENT,
+                canMoveToParent(i) ? EDIT_ICON : EDIT_ICON_DISABLED);
+        drawIcon(graphics, ICON_UP, cx + EDIT_CELL, itemY, half, hover == EditControl.UP,
+                canMoveUp(i) ? EDIT_ICON : EDIT_ICON_DISABLED);
+        drawIcon(graphics, ICON_DOWN, cx + EDIT_CELL, itemY + half, half, hover == EditControl.DOWN,
+                canMoveDown(i) ? EDIT_ICON : EDIT_ICON_DISABLED);
+        drawIcon(graphics, ICON_EDIT, cx + 2 * EDIT_CELL, itemY, half, hover == EditControl.EDIT,
+                isEditable(i) ? EDIT_ICON : EDIT_ICON_DISABLED);
+        drawIcon(graphics, ICON_DELETE, cx + 2 * EDIT_CELL, itemY + half, half, hover == EditControl.DELETE,
+                EDIT_ICON_DELETE);
     }
 
     private static Identifier icon(String name) {
@@ -529,7 +534,50 @@ public class ContextMenu {
         int s = Math.min(EDIT_CELL, cellH) - 1;
         int x = cellX + (EDIT_CELL - s + 1) / 2;
         int y = cellY + (cellH - s + 1) / 2;
-        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, id, x, y, s, s);
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, id, x, y, s, s, tint);
+    }
+
+    private static final Identifier[] LEGEND_ICONS =
+            { ICON_INTO, ICON_TO_PARENT, ICON_UP, ICON_DOWN, ICON_EDIT, ICON_DELETE };
+    private static final String[] LEGEND_KEYS = {
+            "hbtweaks.context.editor.legend.into",
+            "hbtweaks.context.editor.legend.to_parent",
+            "hbtweaks.context.editor.legend.up",
+            "hbtweaks.context.editor.legend.down",
+            "hbtweaks.context.editor.legend.edit",
+            "hbtweaks.context.editor.legend.delete",
+    };
+
+    // Idk what other tint can be good
+    private static final int[] LEGEND_TINT =
+            { EDIT_ICON, EDIT_ICON, EDIT_ICON, EDIT_ICON, EDIT_ICON, EDIT_ICON_DELETE };
+
+    // Bottom-right legend fir edit mode
+    public static void renderEditLegend(GuiGraphicsExtractor graphics) {
+        if (!editMode) return;
+        Minecraft mc = Minecraft.getInstance();
+        int iconSz = 8;
+        int gap = 3;
+        int lineH = 10;
+        Component[] labels = new Component[LEGEND_KEYS.length];
+        int textW = 0;
+        for (int i = 0; i < LEGEND_KEYS.length; i++) {
+            labels[i] = Component.translatable(LEGEND_KEYS[i]);
+            textW = Math.max(textW, mc.font.width(labels[i]));
+        }
+        int boxW = gap + iconSz + gap + textW + gap;
+        int boxH = labels.length * lineH + gap;
+        int margin = 5;
+        int boxX = mc.getWindow().getGuiScaledWidth() - boxW - margin;
+        int boxY = mc.getWindow().getGuiScaledHeight() - boxH - margin;
+
+        graphics.fill(boxX - 1, boxY - 1, boxX + boxW + 1, boxY + boxH + 1, COLOR_BORDER);
+        graphics.fill(boxX, boxY, boxX + boxW, boxY + boxH, COLOR_BG);
+        for (int i = 0; i < labels.length; i++) {
+            int ly = boxY + 2 + i * lineH;
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, LEGEND_ICONS[i], boxX + gap, ly, iconSz, iconSz, LEGEND_TINT[i]);
+            graphics.text(mc.font, labels[i], boxX + gap + iconSz + gap, ly + 1, COLOR_TEXT, false);
+        }
     }
 
     private boolean handleEditClick(int mx, int my) {

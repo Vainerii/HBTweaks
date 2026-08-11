@@ -1,5 +1,11 @@
 {
   "hbtweaks.context.editor.add": "+ Add",
+  "hbtweaks.context.editor.legend.into": "Move into upper menu",
+  "hbtweaks.context.editor.legend.to_parent": "Move out to parent",
+  "hbtweaks.context.editor.legend.up": "Move up",
+  "hbtweaks.context.editor.legend.down": "Move down",
+  "hbtweaks.context.editor.legend.edit": "Edit",
+  "hbtweaks.context.editor.legend.delete": "Delete",
   "hbtweaks.context.editor.add_submenu": "Submenu",
   "hbtweaks.context.editor.add_command": "Command",
   "hbtweaks.context.editor.add_script": "Script",

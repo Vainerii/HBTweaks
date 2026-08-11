@@ -411,9 +411,10 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
                 contextMenu.close();
                 contextMenu = null;
             }
-            if (contextMenu != null)
+            if (contextMenu != null) {
                 contextMenu.render(graphics, tickDelta);
-            else
+                ContextMenu.renderEditLegend(graphics);
+            } else
                 renderHoverName(graphics, leftDown);
         } catch (Exception e) {
             HBTweaksContext.LOGGER.error("Failed to render context menu / hover box", e);
