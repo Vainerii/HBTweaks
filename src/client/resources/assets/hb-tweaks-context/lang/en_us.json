@@ -35,8 +35,6 @@
   "hbtweaks.context.config.menu_style.tooltip": "Normal uses the default spacing. Minimal makes the menu tighter and more compact.",
   "hbtweaks.context.config.menu_style.normal": "Normal",
   "hbtweaks.context.config.menu_style.minimal": "Minimal",
-  "hbtweaks.context.config.chat_command_protector": "Chat command protector",
-  "hbtweaks.context.config.chat_command_protector.tooltip": "Blocks a chat message starting with \":\" when it looks like a command, so it isn't sent by mistake.",
   "hbtweaks.context.config.pos.top_left": "Top left",
   "hbtweaks.context.config.pos.top_right": "Top right",
   "hbtweaks.context.config.pos.bottom_right": "Bottom right",

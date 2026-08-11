@@ -24,8 +24,6 @@ public class ModMenuIntegration implements ModMenuApi {
     private static final Component o_plus_tt = Component.translatable("hbtweaks.context.config.hide_plus.tooltip");
     private static final Component o_menu_style = Component.translatable("hbtweaks.context.config.menu_style");
     private static final Component o_menu_style_tt = Component.translatable("hbtweaks.context.config.menu_style.tooltip");
-    private static final Component o_cmd_protect = Component.translatable("hbtweaks.context.config.chat_command_protector");
-    private static final Component o_cmd_protect_tt = Component.translatable("hbtweaks.context.config.chat_command_protector.tooltip");
 
     private static final Component v_style_normal = Component.translatable("hbtweaks.context.config.menu_style.normal");
     private static final Component v_style_minimal = Component.translatable("hbtweaks.context.config.menu_style.minimal");
@@ -75,12 +73,6 @@ public class ModMenuIntegration implements ModMenuApi {
                         .controller(opt -> EnumControllerBuilder.create(opt)
                                 .enumClass(HBConfig.MenuStyle.class)
                                 .formatValue(ModMenuIntegration::menuStyleLabel))
-                        .build())
-                .option(Option.<Boolean>createBuilder()
-                        .name(o_cmd_protect)
-                        .description(OptionDescription.of(o_cmd_protect_tt))
-                        .binding(def.chatCommandProtector, () -> cfg.chatCommandProtector, v -> cfg.chatCommandProtector = v)
-                        .controller(TickBoxControllerBuilder::create)
                         .build())
                 .build();
 
