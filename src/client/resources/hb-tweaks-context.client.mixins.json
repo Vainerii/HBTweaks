@@ -4,7 +4,8 @@
 	"compatibilityLevel": "JAVA_25",
 	"client": [
 		"ChatScreenAccessor",
-		"ChatScreenMixin"
+		"ChatScreenMixin",
+		"EntityHitboxDebugRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -111,8 +111,11 @@ public class Util {
     }
 
     public static boolean hasPerm() {
+        if (DebugPerm.ENABLED)
+            return DebugPerm.get();
         LocalPlayer me = Minecraft.getInstance().player;
         if (me == null) return false;
-        return me.isCreative() || me.isSpectator() || hasDev();
+        // Replace when api cat tell if user is GM
+        return me.isCreative() || me.isSpectator();
     }
 }

@@ -30,6 +30,19 @@ public final class ScriptRunner {
         for (String line : lines) QUEUE.add(new Step(line, player));
     }
 
+    public static int queueSize() {
+        return QUEUE.size();
+    }
+
+    public static int delayTicks() {
+        return delay;
+    }
+
+    public static void clearQueue() {
+        QUEUE.clear();
+        delay = 0;
+    }
+
     private static void tick() {
         if (Minecraft.getInstance().player == null) {
             QUEUE.clear();

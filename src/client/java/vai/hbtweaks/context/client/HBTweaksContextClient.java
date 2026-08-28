@@ -41,6 +41,9 @@ public class HBTweaksContextClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		//new HerobrinePlayerListener().register();
 		HBConfig.HANDLER.load();
+		DebugPerm.load();
+		if (DebugPerm.ENABLED)
+			DebugCommand.register();
 
 		ClientTickEvents.END_CLIENT_TICK.register(lookAtInfoBox);
 		lookAtInfoBox.register();

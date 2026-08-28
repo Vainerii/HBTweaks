@@ -1,8 +1,6 @@
 package vai.hbtweaks.context.client.listeners;
 
 import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
-import com.mojang.authlib.properties.PropertyMap;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.DeltaTracker;
@@ -25,6 +23,7 @@ import net.minecraft.world.item.ItemStack;
 import org.lwjgl.glfw.GLFW;
 import vai.hbtweaks.context.HBTweaksContext;
 import vai.hbtweaks.context.client.contextmenu.ContextMenu;
+import vai.hbtweaks.context.client.contextmenu.DebugMenu;
 import vai.hbtweaks.context.client.effects.EffectsBank;
 import vai.hbtweaks.context.client.network.EffectPayloads;
 import vai.hbtweaks.context.client.contextmenu.CustomContextMenuLoader;
@@ -33,7 +32,6 @@ import vai.hbtweaks.context.client.contextmenu.editor.AddScriptScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.AddSubmenuScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.DeleteConfirmScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
-import vai.hbtweaks.context.client.keyboard.WritersBank;
 import vai.hbtweaks.context.client.keyboard.WritingStatusSender;
 import vai.hbtweaks.context.client.Util;
 import vai.hbtweaks.context.client.config.HBConfig;
@@ -121,20 +119,6 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         context.addCommandItem(Component.literal("OK ✔").withStyle(ChatFormatting.GREEN), cmdPart + "ok %mcname%");
         context.addCommandItem(Component.literal("NO -").withStyle(ChatFormatting.GRAY), cmdPart + "no %mcname%");
         context.addCommandItem(Component.literal("KO ✘").withStyle(ChatFormatting.RED), cmdPart + "ko %mcname%");
-        return context;
-    }
-
-    private ContextMenu makeDebugContextMenu(Player player) {
-        ContextMenu context = new ContextMenu(0, 0, player);
-        PlayerInfo pi = Minecraft.getInstance().player.connection.getPlayerInfo(player.getUUID());
-        if (pi == null) return null;
-        PropertyMap properties = pi.getProfile().properties();
-        for (Map.Entry<String, Property> e : properties.entries()) {
-            context.addActionItem(Component.literal(e.getKey()), () -> {
-                Minecraft.getInstance().gui.getChat().addClientSystemMessage(Component.literal(e.getValue().name()));
-                Minecraft.getInstance().gui.getChat().addClientSystemMessage(Component.literal(e.getValue().value()));
-            });
-        }
         return context;
     }
 
@@ -236,6 +220,9 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         if (ContextMenuTrigger.customMenuSelf != null)
             context.merge(CustomContextMenuLoader.load(ContextMenuTrigger.customMenuSelf, Minecraft.getInstance().player, CUSTOM_MENU_SELF));
 
+        if (hasDev())
+            context.addSubmenuItem("Debug", DebugMenu.forSelf(self));
+
         context.addAddItem(new MenuLocation(CUSTOM_MENU_SELF, List.of()));
         context.withEditToggle();
 
@@ -304,7 +291,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
             if (ContextMenuTrigger.customMenu != null)
                 ContextMenuTrigger.contextMenu.merge(CustomContextMenuLoader.load(ContextMenuTrigger.customMenu, targetPlayer, CUSTOM_MENU));
             if (hasDev())
-                addSubmenuIfPresent("Debug", makeDebugContextMenu(targetPlayer));
+                addSubmenuIfPresent("Debug", DebugMenu.forPlayer(targetPlayer));
 
             ContextMenuTrigger.contextMenu.addAddItem(new MenuLocation(CUSTOM_MENU, List.of()));
             ContextMenuTrigger.contextMenu.withEditToggle();

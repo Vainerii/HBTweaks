@@ -53,4 +53,27 @@ public class WritersBank {
     public static boolean alreadyWrote(UUID uuid) {
         return seen.contains(uuid);
     }
+
+    /** Milliseconds since the last typing packet */
+    public static long sinceLastWrite(UUID uuid) {
+        Long t = writing.get(uuid);
+        return t == null ? -1 : System.currentTimeMillis() - t;
+    }
+
+    public static long timeout() {
+        return WRITING_TIMEOUT;
+    }
+
+    public static int writingCount() {
+        return writing.size();
+    }
+
+    public static int seenCount() {
+        return seen.size();
+    }
+
+    public static void clear() {
+        writing.clear();
+        seen.clear();
+    }
 }

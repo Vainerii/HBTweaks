@@ -24,4 +24,16 @@ public class EffectsBank {
         return INSTANCE.getOrDefault(uuid, List.of());
     }
 
+    public static boolean has(UUID uuid) {
+        return INSTANCE.containsKey(uuid);
+    }
+
+    public static int size() {
+        return INSTANCE.size();
+    }
+
+    public static void clear() {
+        INSTANCE.clear();
+    }
+
 }
