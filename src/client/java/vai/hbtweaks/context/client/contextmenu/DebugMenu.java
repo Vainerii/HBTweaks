@@ -171,6 +171,18 @@ public final class DebugMenu {
             }
         });
         menu.addCheckboxItem(new ContextMenu.CheckboxItem(
+                Component.literal("Hitbox des entités visibles (F3+B)")) {
+            @Override public boolean isChecked() {
+                return HitboxDebug.showVisible;
+            }
+            @Override protected void checked() {
+                HitboxDebug.showVisible = true;
+            }
+            @Override protected void unchecked() {
+                HitboxDebug.showVisible = false;
+            }
+        });
+        menu.addCheckboxItem(new ContextMenu.CheckboxItem(
                 Component.literal("Hitbox à travers les blocs (F3+B)")) {
             @Override public boolean isChecked() {
                 return HitboxDebug.throughWalls;

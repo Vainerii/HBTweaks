@@ -17,7 +17,7 @@ public class EntityHitboxDebugRendererMixin {
 
     @Redirect(method = "emitGizmos", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;isInvisible()Z"))
     private boolean hbtweaks$showInvisibleHitboxes(Entity entity) {
-        return !HitboxDebug.show && entity.isInvisible();
+        return entity.isInvisible() ? !HitboxDebug.show : !HitboxDebug.showVisible;
     }
 
     private static GizmoProperties hbtweaks$onTop(GizmoProperties properties) {
