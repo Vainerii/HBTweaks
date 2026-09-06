@@ -6,6 +6,9 @@ import dev.isxander.yacl3.config.v2.api.serializer.GsonConfigSerializerBuilder;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.resources.Identifier;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class HBConfig {
 
     public enum HoverLocation { TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT, MOUSE }
@@ -27,10 +30,12 @@ public class HBConfig {
         return HANDLER.instance();
     }
 
+    @SerialEntry public boolean contextMenus = true;
     @SerialEntry public HoverLocation hoverLocation = HoverLocation.MOUSE;
     @SerialEntry public BoxPosition boxPosition = BoxPosition.TOP_LEFT;
     @SerialEntry public boolean hidePlusBox = false;
     @SerialEntry public MenuStyle menuStyle = MenuStyle.NORMAL;
     @SerialEntry public boolean shareTyping = true;
+    @SerialEntry public List<String> hiddenMenus = new ArrayList<>();
     //@SerialEntry public boolean showMyName = true;
 }

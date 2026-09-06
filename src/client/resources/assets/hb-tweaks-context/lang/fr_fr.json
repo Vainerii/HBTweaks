@@ -31,6 +31,8 @@
   "hbtweaks.context.editor.tag.myuuid": "votre UUID",
   "hbtweaks.context.config.title": "HB Tweaks - Context",
   "hbtweaks.context.config.category.general": "Général",
+  "hbtweaks.context.config.context_menus": "Menus contextuels (clic droit)",
+  "hbtweaks.context.config.context_menus.tooltip": "Active les menus au clic droit sur un joueur et sur vous-même, y compris celui ouvert depuis un nom dans le chat.",
   "hbtweaks.context.config.hover_location": "Emplacement de la boîte au survol",
   "hbtweaks.context.config.hover_location.tooltip": "Où afficher la boîte du nom RP (joueur sous le curseur).",
   "hbtweaks.context.config.box_position": "Position de la boîte d'info",
@@ -45,6 +47,7 @@
   "hbtweaks.context.config.pos.top_right": "En haut à droite",
   "hbtweaks.context.config.pos.bottom_right": "En bas à droite",
   "hbtweaks.context.config.pos.mouse": "Souris",
+  "hbtweaks.context.notes.empty": "Aucune note",
   "hbtweaks.context.writing": "En train d'écrire...",
   "key.hb-tweaks-context.cursor": "Curseur libre"
 }

@@ -16,6 +16,8 @@ public class ModMenuIntegration implements ModMenuApi {
     private static final Component title = Component.translatable("hbtweaks.context.config.title");
 
     private static final Component c_general = Component.translatable("hbtweaks.context.config.category.general");
+    private static final Component o_menus = Component.translatable("hbtweaks.context.config.context_menus");
+    private static final Component o_menus_tt = Component.translatable("hbtweaks.context.config.context_menus.tooltip");
     private static final Component o_hover = Component.translatable("hbtweaks.context.config.hover_location");
     private static final Component o_hover_tt = Component.translatable("hbtweaks.context.config.hover_location.tooltip");
     private static final Component o_box = Component.translatable("hbtweaks.context.config.box_position");
@@ -44,6 +46,12 @@ public class ModMenuIntegration implements ModMenuApi {
 
         ConfigCategory general = ConfigCategory.createBuilder()
                 .name(c_general)
+                .option(Option.<Boolean>createBuilder()
+                        .name(o_menus)
+                        .description(OptionDescription.of(o_menus_tt))
+                        .binding(def.contextMenus, () -> cfg.contextMenus, v -> cfg.contextMenus = v)
+                        .controller(TickBoxControllerBuilder::create)
+                        .build())
                 .option(Option.<HBConfig.HoverLocation>createBuilder()
                         .name(o_hover)
                         .description(OptionDescription.of(o_hover_tt))

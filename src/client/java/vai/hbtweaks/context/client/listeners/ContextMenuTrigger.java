@@ -35,6 +35,7 @@ import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
 import vai.hbtweaks.context.client.keyboard.WritingStatusSender;
 import vai.hbtweaks.context.client.Util;
 import vai.hbtweaks.context.client.config.HBConfig;
+import vai.hbtweaks.context.client.notes.NotesMenu;
 import vai.hbtweaks.context.client.mouse.MouseTracker;
 import vai.hbtweaks.context.client.mouse.MouseTrackerEntityClickUpCallback;
 import vai.hbtweaks.context.client.mouse.ClickType;
@@ -225,6 +226,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
         context.addAddItem(new MenuLocation(CUSTOM_MENU_SELF, List.of()));
         context.withEditToggle();
+        context.asRootMenu();
 
         return context;
     }
@@ -239,6 +241,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
     @Override
     public void onClickUp(List<Entity> list, ClickType clickType, ScreenType screenType) {
+        if (!HBConfig.get().contextMenus) return;
         if ((screenType == ScreenType.CHAT || screenType == ScreenType.CURSOR) && clickType == ClickType.RIGHT_CLICK) {
             if (isMouseOverChat()) return;
             Minecraft mc = Minecraft.getInstance();
@@ -272,6 +275,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     }
 
     public void openForPlayer(Player targetPlayer, int x, int y, boolean loaded) {
+        if (!HBConfig.get().contextMenus) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.player.connection.getPlayerInfo(targetPlayer.getUUID()) == null)
             return;
@@ -282,6 +286,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
             ContextMenuTrigger.contextMenu = new ContextMenu(x, y, targetPlayer);
 
             addSubmenuIfPresent("Infos", makeInfoContextMenu(targetPlayer));
+            addSubmenuIfPresent("Notes", NotesMenu.forPlayer(targetPlayer));
             if (isCommandAvailable("reputok"))
                 addSubmenuIfPresent("Reput", makeReputContextMenu(targetPlayer));
             if (isCommandAvailable("avisok"))
@@ -295,6 +300,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
             ContextMenuTrigger.contextMenu.addAddItem(new MenuLocation(CUSTOM_MENU, List.of()));
             ContextMenuTrigger.contextMenu.withEditToggle();
+            ContextMenuTrigger.contextMenu.asRootMenu();
             ContextMenuTrigger.contextMenu.open();
             rebuilder = () -> openForPlayer(targetPlayer, x, y, loaded);
         } catch (Exception e) {

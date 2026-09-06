@@ -4,6 +4,9 @@ import java.util.List;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
 import net.minecraft.client.DeltaTracker;
@@ -46,6 +49,15 @@ public class ContextMenu {
 
     private static final int EDIT_CELL = 8;
     private static final int EDIT_CLUSTER_W = EDIT_CELL * 3;
+
+    // Vanilla book page size
+    private static final int NOTE_WIDTH = 114;
+    private static final int NOTE_HEIGHT = 126;
+    private static final int NOTE_LINE = 9;
+    private static final int NOTE_PAD = 3;
+
+    private NoteBlock noteBlock = null;
+    private boolean rootMenu = false;
 
     private enum EditControl { UP, DOWN, INTO, TO_PARENT, EDIT, DELETE }
 
@@ -133,6 +145,42 @@ public class ContextMenu {
         return this;
     }
 
+    public ContextMenu asRootMenu() {
+        this.rootMenu = true;
+        recalcWidth();
+        return this;
+    }
+
+    private boolean isHideable(int i) {
+        return this.rootMenu
+                && this.itemDelete.get(i) == null
+                && !(this.items.get(i) instanceof AddMenuItem);
+    }
+
+    private static boolean isHidden(MenuItem item) {
+        return HBConfig.get().hiddenMenus.contains(item.getLabel().getString());
+    }
+
+    private static void toggleHidden(MenuItem item) {
+        String label = item.getLabel().getString();
+        List<String> hidden = HBConfig.get().hiddenMenus;
+        if (!hidden.remove(label))
+            hidden.add(label);
+        HBConfig.HANDLER.save();
+        ContextMenuTrigger.rebuildAfterEdit();
+    }
+
+    private void applyHidden() {
+        if (!this.rootMenu || editMode) return;
+        for (int i = this.items.size() - 1; i >= 0; i--) {
+            if (isHideable(i) && isHidden(this.items.get(i))) {
+                this.items.remove(i);
+                this.itemDelete.remove(i);
+            }
+        }
+        recalcWidth();
+    }
+
     private int effectiveItemCount() {
         int n = this.items.size();
         if (!editMode && n > 0 && this.items.get(n - 1) instanceof AddMenuItem) n--;
@@ -144,7 +192,7 @@ public class ContextMenu {
     }
 
     private int toggleY() {
-        return this.y + effectiveItemCount() * itemHeight() + TOGGLE_GAP;
+        return this.y + effectiveItemCount() * itemHeight() + noteBlockHeight() + TOGGLE_GAP;
     }
 
     private boolean isInsideToggle(int mx, int my) {
@@ -185,6 +233,61 @@ public class ContextMenu {
         return push(item);
     }
 
+    public ContextMenu withNoteBlock(NoteBlock block) {
+        this.noteBlock = block;
+        recalcWidth();
+        return this;
+    }
+
+    public ContextMenu addNoteBar(NoteBlock block) {
+        return push(new NoteBarItem(block));
+    }
+
+    public abstract static class NoteBlock {
+        public abstract List<String> pages();
+
+        private int page = 0;
+
+        public int page() {
+            return Math.min(this.page, Math.max(0, pages().size() - 1));
+        }
+
+        public int pageCount() {
+            return Math.max(1, pages().size());
+        }
+
+        public boolean hasPrev() {
+            return page() > 0;
+        }
+
+        public boolean hasNext() {
+            return page() < pages().size() - 1;
+        }
+
+        public void prev() {
+            if (hasPrev()) this.page = page() - 1;
+        }
+
+        public void next() {
+            if (hasNext()) this.page = page() + 1;
+        }
+
+        public abstract void edit();
+
+        String text() {
+            List<String> p = pages();
+            return p.isEmpty() ? "" : p.get(page());
+        }
+    }
+
+    private int noteBlockHeight() {
+        return this.noteBlock == null ? 0 : 1 + NOTE_HEIGHT + NOTE_PAD * 2;
+    }
+
+    private int noteBlockY() {
+        return this.y + effectiveItemCount() * itemHeight();
+    }
+
     public ContextMenu addItemStackItem(ItemStack stack) {
         return push(new ItemStackMenuItem(stack));
     }
@@ -210,6 +313,7 @@ public class ContextMenu {
     }
 
     public void open() {
+        applyHidden();
         this.visible = true;
     }
 
@@ -241,7 +345,7 @@ public class ContextMenu {
         recalcWidth(); // bc of edit mode
 
         int itemCount = effectiveItemCount();
-        int itemsHeight = itemCount * itemHeight();
+        int itemsHeight = itemCount * itemHeight() + noteBlockHeight();
         int footprint = itemsHeight + (this.hasEditToggle ? TOGGLE_GAP + TOGGLE_SIZE : 0);
 
         int screenW = mc.getWindow().getGuiScaledWidth();
@@ -279,7 +383,9 @@ public class ContextMenu {
 
             int textColor = hovered ? ContextMenu.COLOR_TEXT_HOVER : ContextMenu.COLOR_TEXT;
 
-            if (item instanceof ItemStackMenuItem ism) {
+            if (item instanceof NoteBarItem bar) {
+                drawNoteBar(graphics, mc, bar.block, itemY, mouseX, mouseY);
+            } else if (item instanceof ItemStackMenuItem ism) {
                 graphics.item(ism.stack, this.x + paddingX(), itemY);
                 graphics.text(mc.font, item.getLabel(),
                         this.x + paddingX() + ContextMenu.ICON_SIZE + 2,
@@ -303,7 +409,12 @@ public class ContextMenu {
             }
             if (showCluster)
                 drawEditCluster(graphics, mc, i, itemY, mouseX, mouseY);
+            else if (editMode && isHideable(i))
+                drawEyeToggle(graphics, i, itemY, mouseX, mouseY);
         }
+
+        if (this.noteBlock != null)
+            drawNoteBlock(graphics, mc);
 
         if (this.hasEditToggle) {
             int sx = toggleX();
@@ -361,17 +472,43 @@ public class ContextMenu {
 
         if (this.hasEditToggle && isInsideToggle(mx, my)) {
             editMode = !editMode;
+            ContextMenuTrigger.rebuildAfterEdit();
             return false;
         }
 
         if (handleEditClick(mx, my))
             return false; // keep menu open
 
+        if (editMode) {
+            int count = effectiveItemCount();
+            for (int i = 0; i < count; i++) {
+                int itemY = this.y + i * itemHeight();
+                if (isHideable(i) && isInsideEye(mx, my, i, itemY)) {
+                    toggleHidden(this.items.get(i));
+                    return false; // keep menu open
+                }
+            }
+        }
+
         int itemCount = effectiveItemCount();
         for (int i = 0; i < itemCount; i++) {
             int itemY = this.y + i * itemHeight();
             if (isInsideRow(mx, my, itemY)) {
                 MenuItem item = this.items.get(i);
+                if (item instanceof NoteBarItem bar) {
+                    NoteZone zone = hitNoteBar(mx, my, itemY);
+                    if (zone == NoteZone.EDIT) {
+                        bar.block.edit();
+                        close();
+                        return true;
+                    }
+                    if (zone == NoteZone.PREV) bar.block.prev();
+                    if (zone == NoteZone.NEXT) bar.block.next();
+                    if (zone != null)
+                        Minecraft.getInstance().getSoundManager().play(
+                                SimpleSoundInstance.forUI(SoundEvents.BOOK_PAGE_TURN, 1.0F));
+                    return false; // Keep the menu open
+                }
                 if (item instanceof CheckboxItem) {
                     item.onClick();
                     return false; // Keep the menu open
@@ -396,7 +533,7 @@ public class ContextMenu {
         return mx >= this.x
                 && mx < this.x + this.width
                 && my >= this.y
-                && my < this.y + effectiveItemCount() * itemHeight();
+                && my < this.y + effectiveItemCount() * itemHeight() + noteBlockHeight();
     }
 
     public boolean containsMouseRecursive(int mx, int my) {
@@ -509,6 +646,49 @@ public class ContextMenu {
                 EDIT_ICON_DELETE);
     }
 
+    private int eyeX(int i) {
+        return editClusterX(i) + 2 * EDIT_CELL;
+    }
+
+    private int eyeY(int itemY) {
+        return itemY + itemHeight() / 2;
+    }
+
+    private boolean isInsideEye(int mx, int my, int i, int itemY) {
+        int ex = eyeX(i);
+        int ey = eyeY(itemY);
+        return mx >= ex && mx < ex + EDIT_CELL && my >= ey && my < ey + itemHeight() / 2;
+    }
+
+    private void drawEyeToggle(GuiGraphicsExtractor graphics, int i, int itemY, int mouseX, int mouseY) {
+        boolean hidden = isHidden(this.items.get(i));
+        drawIcon(graphics, hidden ? ICON_HIDDEN : ICON_VISIBLE,
+                eyeX(i), eyeY(itemY), itemHeight() / 2,
+                isInsideEye(mouseX, mouseY, i, itemY),
+                hidden ? EDIT_ICON_DISABLED : EDIT_ICON);
+    }
+
+    private void drawNoteBlock(GuiGraphicsExtractor graphics, Minecraft mc) {
+        graphics.fill(this.x, noteBlockY(), this.x + this.width, noteBlockY() + 1, ContextMenu.COLOR_BORDER);
+
+        int bx = this.x + paddingX();
+        int by = noteBlockY() + 1 + NOTE_PAD;
+
+        if (this.noteBlock.pages().isEmpty()) {
+            graphics.text(mc.font,
+                    Component.translatable("hbtweaks.context.notes.empty")
+                            .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC),
+                    bx, by, ContextMenu.COLOR_TEXT, false);
+            return;
+        }
+
+        List<FormattedCharSequence> lines =
+                mc.font.split(Component.literal(this.noteBlock.text()), NOTE_WIDTH);
+        int max = NOTE_HEIGHT / NOTE_LINE;
+        for (int i = 0; i < Math.min(lines.size(), max); i++)
+            graphics.text(mc.font, lines.get(i), bx, by + i * NOTE_LINE, ContextMenu.COLOR_TEXT, false);
+    }
+
     private static Identifier icon(String name) {
         return Identifier.fromNamespaceAndPath("hb-tweaks-context", "icon/" + name);
     }
@@ -520,6 +700,9 @@ public class ContextMenu {
     private static final Identifier ICON_EDIT = icon("edit");
     private static final Identifier ICON_DELETE = icon("remove");
     private static final Identifier ICON_SUBMENU = icon("right_arrow");
+    private static final Identifier ICON_LEFT = icon("left_arrow");
+    private static final Identifier ICON_VISIBLE = icon("visible");
+    private static final Identifier ICON_HIDDEN = icon("hidden");
 
     private void drawSubmenuArrow(GuiGraphicsExtractor graphics, int itemY, boolean besideCluster) {
         int size = Math.min(itemHeight() - 4, 7);
@@ -607,10 +790,13 @@ public class ContextMenu {
             int lw = mc.font.width(item.getLabel());
             if (submenuOf(item) != null) lw += arrowRightPad() + 4;
             if (item instanceof ItemStackMenuItem) lw += ContextMenu.ICON_SIZE; // place pour l'icône 16x16
-            if (editMode && i < this.itemDelete.size() && this.itemDelete.get(i) != null) lw += EDIT_CLUSTER_W + EDIT_ARROW_W + 2;
+            if (editMode && i < this.itemDelete.size() && (this.itemDelete.get(i) != null || isHideable(i)))
+                lw += EDIT_CLUSTER_W + EDIT_ARROW_W + 2;
             if (lw > max) max = lw;
         }
         this.width = Math.max(ContextMenu.MIN_WIDTH, max + paddingX() * 2);
+        if (this.noteBlock != null)
+            this.width = Math.max(this.width, NOTE_WIDTH + paddingX() * 2);
     }
 
     private interface MenuItem {
@@ -796,6 +982,78 @@ public class ContextMenu {
             else
                 checked();
         }
+    }
+
+    /** Single row holding the prev/edit/next controls of the Note menu. */
+    private static final class NoteBarItem implements MenuItem {
+        private final NoteBlock block;
+
+        NoteBarItem(NoteBlock block) {
+            this.block = block;
+        }
+
+        @Override
+        public Component getLabel() {
+            return Component.literal("  " + (block.page() + 1) + "/" + block.pageCount() + "  ");
+        }
+
+        @Override
+        public void onClick() {
+            // Handled per zone
+        }
+    }
+
+    private static final int NOTE_ARROW = 9;
+    private static final int NOTE_PEN = 12;
+    private static final int NOTE_ARROW_GAP = 3;
+
+    private enum NoteZone { PREV, NEXT, EDIT }
+
+    private int noteZoneX(NoteZone zone) {
+        return switch (zone) {
+            case PREV -> this.x + paddingX();
+            case NEXT -> this.x + paddingX() + NOTE_ARROW + NOTE_ARROW_GAP;
+            case EDIT -> this.x + this.width - paddingX() - NOTE_PEN;
+        };
+    }
+
+    private int noteZoneW(NoteZone zone) {
+        return zone == NoteZone.EDIT ? NOTE_PEN : NOTE_ARROW;
+    }
+
+    private NoteZone hitNoteBar(int mx, int my, int rowY) {
+        if (my < rowY || my >= rowY + itemHeight()) return null;
+        for (NoteZone zone : NoteZone.values()) {
+            int zx = noteZoneX(zone);
+            if (mx >= zx && mx < zx + noteZoneW(zone)) return zone;
+        }
+        return null;
+    }
+
+    private void drawNoteBar(GuiGraphicsExtractor graphics, Minecraft mc, NoteBlock block,
+                             int rowY, int mouseX, int mouseY) {
+        NoteZone hover = hitNoteBar(mouseX, mouseY, rowY);
+        int ay = rowY + (itemHeight() - NOTE_ARROW) / 2;
+
+        boolean prev = block.hasPrev();
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, ICON_LEFT,
+                noteZoneX(NoteZone.PREV), ay, NOTE_ARROW, NOTE_ARROW,
+                !prev ? EDIT_ICON_DISABLED : hover == NoteZone.PREV ? EDIT_ICON : ContextMenu.COLOR_TEXT);
+
+        boolean next = block.hasNext();
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, ICON_SUBMENU,
+                noteZoneX(NoteZone.NEXT), ay, NOTE_ARROW, NOTE_ARROW,
+                !next ? EDIT_ICON_DISABLED : hover == NoteZone.NEXT ? EDIT_ICON : ContextMenu.COLOR_TEXT);
+
+        int py = rowY + (itemHeight() - NOTE_PEN) / 2;
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, ICON_EDIT,
+                noteZoneX(NoteZone.EDIT), py, NOTE_PEN, NOTE_PEN,
+                hover == NoteZone.EDIT ? EDIT_ICON : ContextMenu.COLOR_TEXT);
+
+        String label = (block.page() + 1) + "/" + block.pageCount();
+        graphics.text(mc.font, label,
+                this.x + (this.width - mc.font.width(label)) / 2, rowY + textOffsetY(),
+                ContextMenu.COLOR_TEXT, false);
     }
 
     private static final class InfoItem implements MenuItem {

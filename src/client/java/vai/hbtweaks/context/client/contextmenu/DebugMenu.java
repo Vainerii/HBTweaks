@@ -1,15 +1,21 @@
 package vai.hbtweaks.context.client.contextmenu;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.mojang.authlib.properties.Property;
+import com.mojang.serialization.JsonOps;
 import fr.herobrine.network.effects.ServerboundRequestEffectsPacket;
 import fr.herobrine.network.mods.ServerboundHerobrineTweaksHandshakePacket;
 import fr.herobrine.network.speech.ServerboundStartTypingPacket;
 import fr.herobrine.network.speech.ServerboundStopTypingPacket;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.permission.v1.PermissionContext;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.util.ProblemReporter;
@@ -29,6 +35,12 @@ import vai.hbtweaks.context.client.mouse.MouseTracker;
 import vai.hbtweaks.context.client.network.Packets;
 import vai.hbtweaks.context.client.script.ScriptRunner;
 
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -37,6 +49,8 @@ public final class DebugMenu {
 
     private static final int LABEL_MAX = 40;
     private static final int HOVERED_MAX = 10;
+    private static final double DUMP_RANGE = 3.0;
+    private static final Gson DUMP_GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private DebugMenu() {}
 
@@ -315,7 +329,48 @@ public final class DebugMenu {
         m.addActionItem(Component.literal("Empty WritersBank"), WritersBank::clear);
         m.addActionItem(Component.literal("Empty EffectsBank"), EffectsBank::clear);
         m.addActionItem(Component.literal("Reload YAML"), DebugMenu::reloadMenus);
+        m.addActionItem(Component.literal("Dump closest entities"), () -> dumpClosestEntities(self));
         return m;
+    }
+
+    private static void dumpClosestEntities(Player self) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+
+        String stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss").format(LocalDateTime.now());
+        Path dir = FabricLoader.getInstance().getGameDir().resolve("entity_dump").resolve(stamp + "_dump");
+
+        int written = 0;
+        try {
+            Files.createDirectories(dir);
+            AABB box = AABB.ofSize(self.position(), DUMP_RANGE * 2, DUMP_RANGE * 2, DUMP_RANGE * 2);
+            for (Entity e : mc.level.getEntities(self, box, en -> !(en instanceof Player))) {
+                if (e.position().distanceTo(self.position()) > DUMP_RANGE) continue;
+                if (dumpEntity(e, dir)) written++;
+            }
+        } catch (IOException ex) {
+            HBTweaksContext.LOGGER.error("Entity dump failed", ex);
+            return;
+        }
+
+        mc.gui.getChat().addClientSystemMessage(Component.literal(
+                written + " entities dumped into " + dir).withStyle(ChatFormatting.GREEN));
+    }
+
+    /** ProblemReporter.ScopedCollector is for broken entities */
+    private static boolean dumpEntity(Entity e, Path dir) {
+        try (ProblemReporter.ScopedCollector reporter =
+                     new ProblemReporter.ScopedCollector(e.problemPath(), HBTweaksContext.LOGGER)) {
+            TagValueOutput out = TagValueOutput.createWithContext(reporter, e.registryAccess());
+            e.saveWithoutId(out);
+            JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, out.buildResult());
+            Path file = dir.resolve(e.getClass().getSimpleName() + "_" + e.getId() + ".json");
+            Files.writeString(file, DUMP_GSON.toJson(json));
+            return true;
+        } catch (Exception ex) {
+            HBTweaksContext.LOGGER.error("Failed to dump entity {}", e.getId(), ex);
+            return false;
+        }
     }
 
     private static void reloadMenus() {
