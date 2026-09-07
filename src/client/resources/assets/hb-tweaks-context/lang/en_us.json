@@ -48,6 +48,16 @@
   "hbtweaks.context.config.pos.bottom_right": "Bottom right",
   "hbtweaks.context.config.pos.mouse": "Mouse",
   "hbtweaks.context.notes.empty": "No notes yet",
+  "hbtweaks.context.notes.title": "Notebook",
+  "hbtweaks.context.notes.search": "Search",
+  "hbtweaks.context.notes.none": "No notes",
+  "hbtweaks.context.notes.no_selection": "Select a note",
+  "hbtweaks.context.notes.new": "New",
+  "hbtweaks.context.notes.rename": "Rename",
+  "hbtweaks.context.notes.duplicate": "Duplicate",
+  "hbtweaks.context.notes.edit": "Edit",
+  "hbtweaks.context.notes.delete": "Delete",
+  "hbtweaks.context.notes.delete_confirm": "Delete the note on \"%s\" ?",
   "hbtweaks.context.writing": "Is writing...",
   "key.hb-tweaks-context.cursor": "Free cursor"
 }

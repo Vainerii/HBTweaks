@@ -8,17 +8,17 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
-final class EditorButton extends AbstractSpruceWidget {
+public final class EditorButton extends AbstractSpruceWidget {
     private final Component label;
     private final Runnable onClick;
     private final int accent;
     private final int baseBg;
 
-    EditorButton(Position position, int w, int h, Component label, Runnable onClick) {
+    public EditorButton(Position position, int w, int h, Component label, Runnable onClick) {
         this(position, w, h, label, onClick, EditorStyle.BTN_BG, EditorStyle.BTN_HOVER);
     }
 
-    EditorButton(Position position, int w, int h, Component label, Runnable onClick, int bg, int hoverBg) {
+    public EditorButton(Position position, int w, int h, Component label, Runnable onClick, int bg, int hoverBg) {
         super(position);
         this.width = w;
         this.height = h;
@@ -40,7 +40,8 @@ final class EditorButton extends AbstractSpruceWidget {
         int y = this.getY();
         int w = this.getWidth();
         int h = this.getHeight();
-        boolean hovered = mx >= x && mx < x + w && my >= y && my < y + h;
+        boolean enabled = this.isActive();
+        boolean hovered = enabled && mx >= x && mx < x + w && my >= y && my < y + h;
 
         g.fill(x, y, x + w, y + h, hovered ? this.accent : this.baseBg);
         int border = EditorStyle.BTN_BORDER;
@@ -53,6 +54,6 @@ final class EditorButton extends AbstractSpruceWidget {
         int textW = font.width(this.label);
         int drawX = x + (w - textW) / 2;
         int drawY = y + (h - font.lineHeight) / 2;
-        g.text(font, this.label, drawX, drawY, 0xFFFFFFFF, false);
+        g.text(font, this.label, drawX, drawY, enabled ? 0xFFFFFFFF : EditorStyle.TEXT_DIM, false);
     }
 }

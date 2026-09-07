@@ -48,6 +48,16 @@
   "hbtweaks.context.config.pos.bottom_right": "En bas à droite",
   "hbtweaks.context.config.pos.mouse": "Souris",
   "hbtweaks.context.notes.empty": "Aucune note",
+  "hbtweaks.context.notes.title": "Carnet de notes",
+  "hbtweaks.context.notes.search": "Rechercher",
+  "hbtweaks.context.notes.none": "Aucune note",
+  "hbtweaks.context.notes.no_selection": "Sélectionnez une note",
+  "hbtweaks.context.notes.new": "Nouvelle",
+  "hbtweaks.context.notes.rename": "Renommer",
+  "hbtweaks.context.notes.duplicate": "Dupliquer",
+  "hbtweaks.context.notes.edit": "Éditer",
+  "hbtweaks.context.notes.delete": "Supprimer",
+  "hbtweaks.context.notes.delete_confirm": "Supprimer la note de \"%s\" ?",
   "hbtweaks.context.writing": "En train d'écrire...",
   "key.hb-tweaks-context.cursor": "Curseur libre"
 }

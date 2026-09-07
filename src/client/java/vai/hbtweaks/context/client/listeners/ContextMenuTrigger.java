@@ -36,6 +36,7 @@ import vai.hbtweaks.context.client.keyboard.WritingStatusSender;
 import vai.hbtweaks.context.client.Util;
 import vai.hbtweaks.context.client.config.HBConfig;
 import vai.hbtweaks.context.client.notes.NotesMenu;
+import vai.hbtweaks.context.client.notes.NotesScreen;
 import vai.hbtweaks.context.client.mouse.MouseTracker;
 import vai.hbtweaks.context.client.mouse.MouseTrackerEntityClickUpCallback;
 import vai.hbtweaks.context.client.mouse.ClickType;
@@ -184,6 +185,11 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         context.addSubmenuItem("Roll", roll);
 
         context.addCommandItem("Stuff", "stuff");
+
+        context.addActionItem(Component.translatable("hbtweaks.context.notes.title"), () -> {
+            Minecraft mc = Minecraft.getInstance();
+            mc.setScreen(new NotesScreen(mc.screen));
+        });
 
         if (hasPerm()) {
             ContextMenu options = new ContextMenu(0, 0, self);
