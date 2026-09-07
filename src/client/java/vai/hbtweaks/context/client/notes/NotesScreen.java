@@ -82,8 +82,14 @@ public class NotesScreen extends Screen {
         int l = left();
         int t = top();
 
+        Component searchLabel = Component.translatable("hbtweaks.context.notes.search");
         this.search = new SpruceTextFieldWidget(Position.of(l + PAD, t + PAD), LIST_W, EditorStyle.FIELD_H,
-                Component.translatable("hbtweaks.context.notes.search"));
+                searchLabel, searchLabel) {
+            @Override
+            public int getTextColor() {
+                return getText().isEmpty() ? EditorStyle.TEXT_DIM : super.getTextColor();
+            }
+        };
         this.search.setChangedListener(v -> {
             this.searchText = v;
             this.scroll = 0;
