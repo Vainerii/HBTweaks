@@ -81,7 +81,13 @@ public class ContextMenu {
     private boolean hasEditToggle = false;
     private boolean visible = false;
     private int width = MIN_WIDTH;
+    private boolean widthDirty = true;
     private ContextMenu openSubmenu = null;
+
+    private List<FormattedCharSequence> noteLines = null;
+    private String noteLinesFor = null;
+
+    private boolean[] hiddenFlags = new boolean[0];
 
     private Player player;
 
@@ -104,14 +110,14 @@ public class ContextMenu {
     private ContextMenu push(MenuItem item) {
         this.items.add(item);
         this.itemDelete.add(null);
-        recalcWidth();
+        markWidthDirty();
         return this;
     }
 
     public ContextMenu markLastDeletable(MenuLocation.DeleteRef ref) {
         if (!this.itemDelete.isEmpty())
             this.itemDelete.set(this.itemDelete.size() - 1, ref);
-        recalcWidth();
+        markWidthDirty();
         return this;
     }
 
@@ -147,7 +153,7 @@ public class ContextMenu {
 
     public ContextMenu asRootMenu() {
         this.rootMenu = true;
-        recalcWidth();
+        markWidthDirty();
         return this;
     }
 
@@ -178,7 +184,7 @@ public class ContextMenu {
                 this.itemDelete.remove(i);
             }
         }
-        recalcWidth();
+        markWidthDirty();
     }
 
     private int effectiveItemCount() {
@@ -235,7 +241,7 @@ public class ContextMenu {
 
     public ContextMenu withNoteBlock(NoteBlock block) {
         this.noteBlock = block;
-        recalcWidth();
+        markWidthDirty();
         return this;
     }
 
@@ -342,7 +348,7 @@ public class ContextMenu {
 
         Minecraft mc = Minecraft.getInstance();
 
-        recalcWidth(); // bc of edit mode
+        ensureWidth(); // bc of edit mode
 
         int itemCount = effectiveItemCount();
         int itemsHeight = itemCount * itemHeight() + noteBlockHeight();
@@ -661,7 +667,7 @@ public class ContextMenu {
     }
 
     private void drawEyeToggle(GuiGraphicsExtractor graphics, int i, int itemY, int mouseX, int mouseY) {
-        boolean hidden = isHidden(this.items.get(i));
+        boolean hidden = i < this.hiddenFlags.length ? this.hiddenFlags[i] : isHidden(this.items.get(i));
         drawIcon(graphics, hidden ? ICON_HIDDEN : ICON_VISIBLE,
                 eyeX(i), eyeY(itemY), itemHeight() / 2,
                 isInsideEye(mouseX, mouseY, i, itemY),
@@ -682,11 +688,14 @@ public class ContextMenu {
             return;
         }
 
-        List<FormattedCharSequence> lines =
-                mc.font.split(Component.literal(this.noteBlock.text()), NOTE_WIDTH);
+        String text = this.noteBlock.text();
+        if (this.noteLines == null || !text.equals(this.noteLinesFor)) {
+            this.noteLinesFor = text;
+            this.noteLines = mc.font.split(Component.literal(text), NOTE_WIDTH);
+        }
         int max = NOTE_HEIGHT / NOTE_LINE;
-        for (int i = 0; i < Math.min(lines.size(), max); i++)
-            graphics.text(mc.font, lines.get(i), bx, by + i * NOTE_LINE, ContextMenu.COLOR_TEXT, false);
+        for (int i = 0; i < Math.min(this.noteLines.size(), max); i++)
+            graphics.text(mc.font, this.noteLines.get(i), bx, by + i * NOTE_LINE, ContextMenu.COLOR_TEXT, false);
     }
 
     private static Identifier icon(String name) {
@@ -782,11 +791,20 @@ public class ContextMenu {
         return false;
     }
 
-    private void recalcWidth() {
+    private void markWidthDirty() {
+        this.widthDirty = true;
+    }
+
+    private void ensureWidth() {
+        if (!this.widthDirty) return;
+        this.widthDirty = false;
+
         Minecraft mc = Minecraft.getInstance();
         int max = 0;
+        this.hiddenFlags = new boolean[this.items.size()];
         for (int i = 0; i < this.items.size(); i++) {
             MenuItem item = this.items.get(i);
+            this.hiddenFlags[i] = isHidden(item);
             int lw = mc.font.width(item.getLabel());
             if (submenuOf(item) != null) lw += arrowRightPad() + 4;
             if (item instanceof ItemStackMenuItem) lw += ContextMenu.ICON_SIZE; // place pour l'icône 16x16
@@ -1138,7 +1156,7 @@ public class ContextMenu {
     public ContextMenu merge(ContextMenu cm) {
         this.items.addAll(cm.items);
         this.itemDelete.addAll(cm.itemDelete);
-        recalcWidth();
+        markWidthDirty();
         return this;
     }
 }

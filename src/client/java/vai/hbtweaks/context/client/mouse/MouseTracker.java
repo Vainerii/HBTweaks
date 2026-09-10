@@ -1,11 +1,11 @@
 package vai.hbtweaks.context.client.mouse;
 
-import com.google.common.base.Predicates;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -17,14 +17,11 @@ import org.lwjgl.glfw.GLFW;
 import vai.hbtweaks.context.client.Util;
 
 import java.util.ArrayList;
-import java.util.EnumMap;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 public class MouseTracker implements ClientTickEvents.EndTick {
-
-    private List<Entity> previouslyDetectedEntities = new ArrayList<>();
 
     private static volatile List<Entity> hoveredEntities = List.of();
 
@@ -32,11 +29,13 @@ public class MouseTracker implements ClientTickEvents.EndTick {
         return hoveredEntities;
     }
 
-    private Map<ClickType, Boolean> previousClicksStatus = new EnumMap<>(Map.of(
-            ClickType.LEFT_CLICK, false,
-            ClickType.RIGHT_CLICK, false,
-            ClickType.MIDDLE_CLICK, false
-    ));
+    private record Hit(double distSqr, Vec3 point, Entity entity) { }
+
+    private final List<Hit> hits = new ArrayList<>();
+
+    private boolean leftDown = false;
+    private boolean middleDown = false;
+    private boolean rightDown = false;
 
     public static void register() {
         ClientTickEvents.END_CLIENT_TICK.register(new MouseTracker());
@@ -48,25 +47,35 @@ public class MouseTracker implements ClientTickEvents.EndTick {
         if (ce == null) return List.of();
 
         Vec3 origin = mc.gameRenderer.getMainCamera().position();
-        Vec3 end = origin.add(rayDirection.normalize().scale(256.0));
+        Vec3 end = origin.add(rayDirection.normalize().scale(Util.rayLength()));
         AABB searchBox = new AABB(origin, end).inflate(1.0D);
-        ArrayList<Map.Entry<Double, Entity>> resultMap = new ArrayList<>();
 
-        boolean checkOcclusion = !Util.hasPerm();
-
-        for (Entity e : ce.level().getEntities(ce, searchBox, Predicates.alwaysTrue())) {
+        this.hits.clear();
+        for (Entity e : ce.level().getEntities(ce, searchBox,
+                en -> Util.hasDev() || (en instanceof Player p && Util.isReal(p)))) {
             AABB ebb = e.getBoundingBox().inflate(e.getPickRadius());
-            Optional<Vec3> optional = ebb.clip(origin, end);
             if (ebb.contains(origin)) {
-                resultMap.add(Map.entry(0D, e));
-            } else if (optional.isPresent()) {
-                if (checkOcclusion && isOccluded(ce, origin, optional.get())) continue;
-                double dist = origin.distanceToSqr(optional.get());
-                resultMap.add(Map.entry(dist, e));
+                this.hits.add(new Hit(0D, origin, e));
+                continue;
             }
+            Optional<Vec3> optional = ebb.clip(origin, end);
+            if (optional.isPresent())
+                this.hits.add(new Hit(origin.distanceToSqr(optional.get()), optional.get(), e));
         }
-        resultMap.sort(Map.Entry.comparingByKey());
-        return resultMap.stream().map(Map.Entry::getValue).toList();
+        if (this.hits.isEmpty()) return List.of();
+        this.hits.sort(Comparator.comparingDouble(Hit::distSqr));
+
+        int from = 0;
+        if (!Util.hasPerm()) {
+            while (from < this.hits.size() && isOccluded(ce, origin, this.hits.get(from).point()))
+                from++;
+            if (from == this.hits.size()) return List.of();
+        }
+
+        List<Entity> out = new ArrayList<>(this.hits.size() - from);
+        for (int i = from; i < this.hits.size(); i++)
+            out.add(this.hits.get(i).entity());
+        return List.copyOf(out);
     }
 
     private boolean isOccluded(Entity ce, Vec3 origin, Vec3 target) {
@@ -130,37 +139,37 @@ public class MouseTracker implements ClientTickEvents.EndTick {
 
         if (mh.isMouseGrabbed()) {
             hoveredEntities = List.of();
+            this.leftDown = false;
+            this.middleDown = false;
+            this.rightDown = false;
             return;
         }
 
         ScreenType screenType = ScreenType.fromScreen(minecraft.screen);
 
-        Vec3 pixelRay = this.pixelRayCast();
-        if (pixelRay == null) {
-            hoveredEntities = List.of();
-            return;
+        if (Math.floorMod(minecraft.gui.getGuiTicks(), 2) == 1) {
+            Vec3 pixelRay = this.pixelRayCast();
+            hoveredEntities = pixelRay == null ? List.of() : this.getRayCastedEntities(pixelRay);
         }
-
-        List<Entity> detectedEntities = this.getRayCastedEntities(pixelRay);
-        hoveredEntities = detectedEntities;
+        List<Entity> detectedEntities = hoveredEntities;
 
         long windowHandle = minecraft.getWindow().handle();
-        Map<ClickType, Boolean> clicksStatus = new EnumMap<>(Map.of(
-                ClickType.LEFT_CLICK, GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS,
-                ClickType.MIDDLE_CLICK, GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS,
-                ClickType.RIGHT_CLICK, GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS
-        ));
+        boolean left = GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+        boolean middle = GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
+        boolean right = GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
 
-        for (var clickEntry : clicksStatus.entrySet()) {
-            boolean wasPressed = this.previousClicksStatus.get(clickEntry.getKey());
-            boolean isPressed = clickEntry.getValue();
-            if (wasPressed && !isPressed) {
-                MouseTrackerEntityClickUpCallback.EVENT.invoker()
-                        .onClickUp(detectedEntities, clickEntry.getKey(), screenType);
-            }
-        }
+        if (this.leftDown && !left)
+            MouseTrackerEntityClickUpCallback.EVENT.invoker()
+                    .onClickUp(detectedEntities, ClickType.LEFT_CLICK, screenType);
+        if (this.middleDown && !middle)
+            MouseTrackerEntityClickUpCallback.EVENT.invoker()
+                    .onClickUp(detectedEntities, ClickType.MIDDLE_CLICK, screenType);
+        if (this.rightDown && !right)
+            MouseTrackerEntityClickUpCallback.EVENT.invoker()
+                    .onClickUp(detectedEntities, ClickType.RIGHT_CLICK, screenType);
 
-        this.previouslyDetectedEntities = detectedEntities;
-        this.previousClicksStatus = clicksStatus;
+        this.leftDown = left;
+        this.middleDown = middle;
+        this.rightDown = right;
     }
 }

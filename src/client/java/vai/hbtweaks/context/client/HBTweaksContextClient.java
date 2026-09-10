@@ -2,6 +2,7 @@ package vai.hbtweaks.context.client;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
@@ -47,6 +48,8 @@ public class HBTweaksContextClient implements ClientModInitializer {
 
 		ClientTickEvents.END_CLIENT_TICK.register(lookAtInfoBox);
 		lookAtInfoBox.register();
+
+		ClientPlayConnectionEvents.DISCONNECT.register((_, _) -> Util.clearCaches());
 
 		MessagePayloads.init();
 		EffectPayloads.init();

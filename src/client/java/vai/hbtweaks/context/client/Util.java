@@ -12,7 +12,16 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.component.ResolvableProfile;
 import vai.hbtweaks.context.client.keyboard.WritersBank;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 public class Util {
+
+    public static int rayLength() {
+        // If entities are further than the player view settings, no need to check
+        return Math.min(64, Minecraft.getInstance().options.getEffectiveRenderDistance() * 16);
+    }
 
     public static MutableComponent distanceIndicator(double dist) {
         if (dist > 100f) return Component.literal("[:]").withStyle(ChatFormatting.WHITE);
@@ -60,14 +69,30 @@ public class Util {
         }
     }
 
+    private record Head(PlayerInfo info, Component component) { }
+
+    private static final Map<UUID, Head> HEADS = new HashMap<>();
+
     public static Component getHead(Player player) {
         try {
-            PlayerInfo pi = Minecraft.getInstance().player.connection.getPlayerInfo(player.getUUID());
+            LocalPlayer me = Minecraft.getInstance().player;
+            if (me == null) return Component.empty();
+            PlayerInfo pi = me.connection.getPlayerInfo(player.getUUID());
+            if (pi == null) return Component.empty();
+            Head cached = HEADS.get(player.getUUID());
+            if (cached != null && cached.info() == pi)
+                return cached.component();
             ResolvableProfile rp = ResolvableProfile.createResolved(pi.getProfile());
-            return Component.object(new PlayerSprite(rp, true)).append(Component.literal(" "));
+            Component head = Component.object(new PlayerSprite(rp, true)).append(Component.literal(" "));
+            HEADS.put(player.getUUID(), new Head(pi, head));
+            return head;
         } catch (Exception ignored) {
             return Component.empty();
         }
+    }
+
+    public static void clearCaches() {
+        HEADS.clear();
     }
 
     public static String getFakeName(Player player) {
