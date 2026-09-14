@@ -40,6 +40,7 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
     private static List<Component> staticLines = null;
     private static int staticWidth = 0;
     private static UUID lastUuid = null;
+    private static Player currentTarget = null;
 
     public void register() {
         HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, ID, LookAtInfoBox::render);
@@ -50,11 +51,28 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
         // Both intervals are even, and MouseTracker only runs on odd gui ticks, so the
         // two raycasts never land on the same tick. Slower rate is enough when cursor doesnt move.
         int interval = client.mouseHandler.isMouseGrabbed() ? 2 : 6;
-        if (Math.floorMod(client.gui.getGuiTicks(), interval) != 0)
-            return;
         try {
-            updateTarget(client);
+            if (Math.floorMod(client.gui.getGuiTicks(), interval) == 0)
+                updateTarget(client);
+            refresh(client);
         } catch (Exception ignored) { }
+    }
+
+    private static void refresh(Minecraft mc) {
+        Player target = currentTarget;
+        if (target == null || staticLines == null || mc.player == null || target.isRemoved()) {
+            box = null;
+            return;
+        }
+        Component live = Util.distanceIndicator(mc.player.position().distanceTo(target.position()))
+                .append(Component.literal(" - ").withStyle(ChatFormatting.WHITE))
+                .append(Util.writingIndicator(target));
+
+        List<Component> built = new ArrayList<>(staticLines.size() + 1);
+        built.addAll(staticLines);
+        built.add(live);
+
+        box = new Box(List.copyOf(built), Math.max(staticWidth, mc.font.width(live)));
     }
 
     private static void updateTarget(Minecraft mc) {
@@ -83,20 +101,12 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
             staticLines = built;
             staticWidth = w;
         }
-
-        Component live = Util.distanceIndicator(mc.player.position().distanceTo(target.position()))
-                .append(Component.literal(" - ").withStyle(ChatFormatting.WHITE))
-                .append(Util.writingIndicator(target));
-
-        List<Component> built = new ArrayList<>(staticLines.size() + 1);
-        built.addAll(staticLines);
-        built.add(live);
-
-        box = new Box(List.copyOf(built), Math.max(staticWidth, font.width(live)));
+        currentTarget = target;
     }
 
     private static void clear() {
         lastUuid = null;
+        currentTarget = null;
         staticLines = null;
         staticWidth = 0;
         box = null;
