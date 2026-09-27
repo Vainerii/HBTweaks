@@ -18,6 +18,7 @@ public class CursorScreen extends Screen {
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) { }
 
+    /** Pressing the cursor key again closes the screen, making the key a toggle. */
     @Override
     public boolean keyPressed(KeyEvent event) {
          if (HBTweaksContextClient.CURSOR_KEY.matches(event)) {

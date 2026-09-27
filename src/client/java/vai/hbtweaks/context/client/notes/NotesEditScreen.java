@@ -26,6 +26,7 @@ public class NotesEditScreen extends Screen {
     private static final int TEXT_HEIGHT = 126;
     private static final int IMAGE_WIDTH = 192;
     private static final int IMAGE_HEIGHT = 192;
+    /** Same page cap as a vanilla book. */
     private static final int MAX_PAGES = 100;
 
     private final Screen parent;
@@ -38,6 +39,11 @@ public class NotesEditScreen extends Screen {
     private Component numberOfPages = CommonComponents.EMPTY;
     private MultiLineEditBox page;
 
+    /**
+     * @param parent the screen to return to
+     * @param key the notes key being edited, also shown as the title
+     * @param pages the current pages; a single empty page is used if there is none
+     */
     public NotesEditScreen(Screen parent, String key, List<String> pages) {
         super(Component.literal(key));
         this.parent = parent;
@@ -115,6 +121,7 @@ public class NotesEditScreen extends Screen {
         updateButtonVisibility();
     }
 
+    /** Goes to the next page, appending a new empty one when already on the last page. */
     private void pageForward() {
         if (this.currentPage < getNumPages() - 1) {
             this.currentPage++;
@@ -143,6 +150,7 @@ public class NotesEditScreen extends Screen {
             it.remove();
     }
 
+    /** Drops blank trailing pages then saves; a note left with no page is deleted. */
     private void saveChanges() {
         eraseEmptyTrailingPages();
         NotesBank.set(this.key, this.pages);
@@ -159,6 +167,7 @@ public class NotesEditScreen extends Screen {
         return true;
     }
 
+    /** Page Up and Page Down (GLFW keys 266 and 267) turn pages, as in the vanilla book. */
     @Override
     public boolean keyPressed(KeyEvent event) {
         switch (event.key()) {

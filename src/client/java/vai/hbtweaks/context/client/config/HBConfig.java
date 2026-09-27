@@ -9,14 +9,25 @@ import net.minecraft.resources.Identifier;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * User configuration, handled by YACL and saved to
+ * <code>config/hb-tweaks-context/config.json</code>. Every public field annotated with
+ * SerialEntry is persisted.
+ *
+ * @see ModMenuIntegration
+ */
 public class HBConfig {
 
+    /** Where the name box of the player under the mouse cursor is drawn. */
     public enum HoverLocation { TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT, MOUSE }
 
+    /** Where the info box of the player at the crosshair is drawn. */
     public enum BoxPosition { TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT }
 
+    /** Visual style of the context menu. */
     public enum MenuStyle { NORMAL, MINIMAL }
 
+    /** YACL handler, used to load, save and read the default values. */
     public static final ConfigClassHandler<HBConfig> HANDLER =
             ConfigClassHandler.createBuilder(HBConfig.class)
                     .id(Identifier.fromNamespaceAndPath("hb-tweaks-context", "config"))
@@ -30,12 +41,19 @@ public class HBConfig {
         return HANDLER.instance();
     }
 
+    /** Enables the right-click context menus. */
     @SerialEntry public boolean contextMenus = true;
     @SerialEntry public HoverLocation hoverLocation = HoverLocation.MOUSE;
     @SerialEntry public BoxPosition boxPosition = BoxPosition.TOP_LEFT;
+    /** Hides the "+" box of the context menu, the toggle that enters edit mode. */
     @SerialEntry public boolean hidePlusBox = false;
     @SerialEntry public MenuStyle menuStyle = MenuStyle.NORMAL;
+    /**
+     * Sends the local "is writing" status to other players. Toggled from the Options submenu
+     * of the context menu, not from the config screen.
+     */
     @SerialEntry public boolean shareTyping = true;
+    /** Labels of the root context menu rows the user chose to hide. */
     @SerialEntry public List<String> hiddenMenus = new ArrayList<>();
     //@SerialEntry public boolean showMyName = true;
 }

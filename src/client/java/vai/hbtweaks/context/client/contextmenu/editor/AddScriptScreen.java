@@ -12,7 +12,13 @@ import net.minecraft.network.chat.Component;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Dialog creating or editing a script entry of a custom menu: one line per chat message or
+ * command, run in order by ScriptRunner. The right column lists the available placeholders and
+ * the wait tag.
+ */
 public class AddScriptScreen extends EditorScreen {
+    /** Tags shown as help: the tag, then the translation key of its description. */
     private static final String[][] TAGS = {
             {"[wait:5s]", "hbtweaks.context.editor.tag.wait"},
             {"%mcname%", "hbtweaks.context.editor.tag.mcname"},
@@ -28,16 +34,32 @@ public class AddScriptScreen extends EditorScreen {
     };
 
     private final MenuLocation location;
+    /** Index of the edited entry, or -1 when creating a new one. */
     private final int editIndex;
     private final String initialName;
     private final List<String> initialLines;
     private SpruceTextFieldWidget nameField;
     private SpruceTextAreaWidget scriptArea;
 
+    /**
+     * Creation mode.
+     *
+     * @param parent the screen to return to
+     * @param location the list the entry is appended to
+     */
     public AddScriptScreen(Screen parent, MenuLocation location) {
         this(parent, location, -1, "", List.of());
     }
 
+    /**
+     * Edit mode when editIndex is 0 or more, prefilled with the current values.
+     *
+     * @param parent the screen to return to
+     * @param location the list holding the entry
+     * @param editIndex the entry index, or -1 to create
+     * @param name the current label
+     * @param lines the current script lines
+     */
     public AddScriptScreen(Screen parent, MenuLocation location, int editIndex, String name, List<String> lines) {
         super(parent, Component.translatable("hbtweaks.context.editor.add_script"), 460, 200);
         this.location = location;
@@ -95,6 +117,7 @@ public class AddScriptScreen extends EditorScreen {
         }
     }
 
+    /** Saves the entry with its non-blank lines, if it has a name and at least one line. */
     private void submit() {
         String name = this.nameField.getText().trim();
         List<String> lines = new ArrayList<>();

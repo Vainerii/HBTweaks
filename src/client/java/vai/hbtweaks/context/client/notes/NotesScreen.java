@@ -15,6 +15,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Browser for every note: a searchable list of keys on the left, a read-only page preview on
+ * the right, and buttons to create, rename, duplicate, edit and delete notes.
+ */
 public class NotesScreen extends Screen {
 
     private static final int PANEL_W = 380;
@@ -39,12 +43,16 @@ public class NotesScreen extends Screen {
     private static final int COLOR_BOX_BG = 0xFF080808;
 
     private final Screen parent;
+    /** Keys matching the search filter, in display order. */
     private final List<String> shown = new ArrayList<>();
 
     private SpruceTextFieldWidget search;
     private String searchText = "";
+    /** Selected note key, or null. */
     private String selected = null;
+    /** Previewed page of the selected note. */
     private int page = 0;
+    /** Index of the first visible row of the list. */
     private int scroll = 0;
 
     private EditorButton renameBtn;
@@ -126,6 +134,10 @@ public class NotesScreen extends Screen {
         refresh();
     }
 
+    /**
+     * Refilters the list with the search text, keeps the selection if still shown or falls back
+     * to the first entry, and clamps the scroll.
+     */
     private void refresh() {
         this.shown.clear();
         String filter = this.search == null ? "" : this.search.getText().trim().toLowerCase(Locale.ROOT);
@@ -215,6 +227,10 @@ public class NotesScreen extends Screen {
                 Component.translatable("hbtweaks.context.notes.delete_confirm", key)));
     }
 
+    /**
+     * Handles list row selection and the preview's "&lt;" / "&gt;" page arrows, whose hit boxes
+     * are recomputed with the same layout math as renderPreview.
+     */
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         int mx = (int) event.x();
@@ -330,6 +346,10 @@ public class NotesScreen extends Screen {
         return NOTE_HEIGHT + NOTE_BOX_PAD * 2;
     }
 
+    /**
+     * Draws the selected note's title, the current page in a box sized like a vanilla book page,
+     * and the page navigation line below it.
+     */
     private void renderPreview(GuiGraphicsExtractor graphics) {
         int sectionX = left() + PAD + LIST_W + PAD;
 
@@ -380,6 +400,9 @@ public class NotesScreen extends Screen {
                 COLOR_DIM, false);
     }
 
+    /**
+     * @return the text, cut with "..." if wider than maxWidth pixels
+     */
     private String trim(String text, int maxWidth) {
         if (this.font.width(text) <= maxWidth) return text;
         return this.font.plainSubstrByWidth(text, maxWidth - this.font.width("...")) + "...";

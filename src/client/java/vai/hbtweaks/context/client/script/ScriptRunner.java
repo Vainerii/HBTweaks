@@ -11,21 +11,36 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Runs the multi-line scripts of context menu entries, one line per tick. A line starting with
+ * "/" is sent as a command, any other line as a chat message, after placeholder replacement.
+ * A line <code>[wait:Ns]</code> or <code>[wait:Nt]</code> pauses the queue for N seconds or
+ * N ticks. The queue is dropped when the player leaves the world.
+ */
 public final class ScriptRunner {
 
     private ScriptRunner() {}
 
+    /** One script line, with the player targeted by the menu it came from. */
     private record Step(String line, Player player) {}
 
     private static final Deque<Step> QUEUE = new ArrayDeque<>();
+    /** Remaining ticks to wait before running the next line. */
     private static int delay = 0;
 
+    /** Matches a wait line: a number followed by "s" (seconds) or "t" (ticks). */
     private static final Pattern WAIT = Pattern.compile("^\\[wait:(\\d+)([st])]$", Pattern.CASE_INSENSITIVE);
 
     public static void init() {
         ClientTickEvents.END_CLIENT_TICK.register(_ -> tick());
     }
 
+    /**
+     * Appends script lines to the queue, after any script already running.
+     *
+     * @param lines the script lines
+     * @param player the player the placeholders refer to
+     */
     public static void enqueue(List<String> lines, Player player) {
         for (String line : lines) QUEUE.add(new Step(line, player));
     }
@@ -58,6 +73,13 @@ public final class ScriptRunner {
         }
     }
 
+    /**
+     * Runs one script line.
+     *
+     * @param step the line to run
+     * @return true if the line consumed the tick (message sent or wait started), false if it
+     * was blank and the next line can run right away
+     */
     private static boolean runStep(Step step) {
         String raw = step.line().trim();
         if (raw.isEmpty()) return false;

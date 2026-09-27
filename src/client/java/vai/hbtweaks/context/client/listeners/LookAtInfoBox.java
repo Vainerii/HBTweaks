@@ -25,6 +25,16 @@ import java.util.UUID;
 
 import static vai.hbtweaks.context.client.Util.isReal;
 
+/**
+ * HUD box showing who the local player is looking at (crosshair, not mouse cursor): head and
+ * roleplay name, visible Minecraft name, fake name for game masters, then a live line with the
+ * distance and typing indicators.
+ * <p>
+ * Work is split into three rates. The raycast (updateTarget) is throttled and only rebuilds the
+ * identity lines when the target changes. The live line (refresh) is rebuilt every tick so the
+ * typing animation keeps its speed. The HUD render only draws the prebuilt Box, with no
+ * allocation per frame.
+ */
 public class LookAtInfoBox implements ClientTickEvents.EndTick {
 
     private static final Identifier ID =
@@ -33,19 +43,29 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
     private static final int LINE_HEIGHT = 10;
     private static final int BG_COLOR = 0xD0000000;
 
+    /** Ready-to-draw content of the box. */
     private record Box(List<Component> lines, int width) { }
 
+    /** What the HUD draws, or null for nothing. Replaced as a whole, never mutated. */
     private static volatile Box box = null;
 
+    /** Identity lines of the current target, rebuilt only when the target changes. */
     private static List<Component> staticLines = null;
+    /** Width of the widest identity line. */
     private static int staticWidth = 0;
+    /** UUID the identity lines were built for. */
     private static UUID lastUuid = null;
     private static Player currentTarget = null;
 
+    /** Registers the HUD element, drawn just before the chat. */
     public void register() {
         HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, ID, LookAtInfoBox::render);
     }
 
+    /**
+     * Raycasts every 2 ticks while the mouse is grabbed and every 6 ticks while it is free, on
+     * even GUI ticks only. Refreshes the live line every tick.
+     */
     @Override
     public void onEndTick(Minecraft client) {
         // Both intervals are even, and MouseTracker only runs on odd gui ticks, so the
@@ -58,6 +78,7 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
         } catch (Exception ignored) { }
     }
 
+    /** Rebuilds the box from the cached identity lines plus a fresh distance and typing line. */
     private static void refresh(Minecraft mc) {
         Player target = currentTarget;
         if (target == null || staticLines == null || mc.player == null || target.isRemoved()) {
@@ -75,6 +96,10 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
         box = new Box(List.copyOf(built), Math.max(staticWidth, mc.font.width(live)));
     }
 
+    /**
+     * Finds the targeted player and caches its identity lines. Players absent from the tab
+     * list are ignored.
+     */
     private static void updateTarget(Minecraft mc) {
         Entity camera = mc.getCameraEntity();
         if (camera == null || mc.player == null) {
@@ -112,6 +137,13 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
         box = null;
     }
 
+    /**
+     * Builds the identity lines: head and roleplay name, the Minecraft name visible to the local
+     * player, and the fake name for game masters.
+     *
+     * @param player the target
+     * @return the lines, possibly empty
+     */
     private static List<Component> buildLines(Player player) {
         List<Component> out = new ArrayList<>();
         Component rp = Util.getRpName(player);
@@ -163,6 +195,13 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
         }
     }
 
+    /**
+     * Nearest real, visible player crossed by the camera's view ray.
+     *
+     * @param camera the camera entity
+     * @param seeThroughWall if false, a player hidden behind a block is not returned
+     * @return the targeted player, or null if none
+     */
     private static Player getTargetedPlayer(Entity camera, boolean seeThroughWall) {
         try {
             Minecraft mc = Minecraft.getInstance();

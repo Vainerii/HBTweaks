@@ -6,6 +6,10 @@ import vai.hbtweaks.context.client.contextmenu.ContextMenu;
 
 import java.util.List;
 
+/**
+ * Builds the Notes submenu of a player's context menu: a note bar showing the player's note
+ * pages, with an edit action opening NotesEditScreen.
+ */
 public final class NotesMenu {
 
     private NotesMenu() {}

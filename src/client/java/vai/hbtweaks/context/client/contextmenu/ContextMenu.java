@@ -32,6 +32,22 @@ import vai.hbtweaks.context.client.script.ScriptRunner;
 import java.util.ArrayList;
 import java.util.UUID;
 
+/**
+ * Hand-drawn right-click menu about one player. A menu is a list of rows (items), each possibly
+ * opening a submenu to its right on hover, optionally followed by a note block and by the small
+ * "+" toggle that enters edit mode.
+ * <p>
+ * Menus are composed with the chainable add methods; the row types themselves are private.
+ * NoteBlock and CheckboxItem are the only extension points. Submenus are built eagerly when the
+ * root menu opens, but only the open one is rendered.
+ * <p>
+ * Edit mode (global, shared by every menu) shows, on each row coming from a custom YAML file,
+ * a cluster of six controls: move into the submenu above, move to parent, move up, move down,
+ * edit, delete. Built-in root rows get an eye toggle instead, hiding them outside edit mode.
+ * <p>
+ * The width is computed lazily: every mutator must call markWidthDirty, and ensureWidth then
+ * recomputes it at most once per frame.
+ */
 public class ContextMenu {
 
     private static final int MIN_WIDTH = 20;
@@ -47,6 +63,7 @@ public class ContextMenu {
     private static final int TOGGLE_SIZE = 9;
     private static final int TOGGLE_GAP = 1;
 
+    /** Width of one column of the edit cluster; each column holds two half-height controls. */
     private static final int EDIT_CELL = 8;
     private static final int EDIT_CLUSTER_W = EDIT_CELL * 3;
 
@@ -56,11 +73,15 @@ public class ContextMenu {
     private static final int NOTE_LINE = 9;
     private static final int NOTE_PAD = 3;
 
+    /** Note preview drawn below the rows, or null. */
     private NoteBlock noteBlock = null;
+    /** Whether this is the top-level menu; only its built-in rows can be hidden. */
     private boolean rootMenu = false;
 
+    /** The six controls of a row's edit cluster. */
     private enum EditControl { UP, DOWN, INTO, TO_PARENT, EDIT, DELETE }
 
+    /** Compact rows, from HBConfig.menuStyle, read once at construction. */
     private final boolean minimalStyle;
 
     // Minimal style is temporarily ignored while editing
@@ -73,24 +94,38 @@ public class ContextMenu {
     private int x;
     private int y;
 
+    /** Master switch for every editing feature (add rows, "+" toggle, Delete key). */
     public static boolean EDIT_ENABLED = true;
+    /** Whether edit mode is on. Global so it survives the menu rebuild that follows each edit. */
     public static boolean editMode = false;
 
     private final List<MenuItem> items = new ArrayList<>();
+    /**
+     * Parallel to items: the custom YAML entry each row comes from, or null for built-in rows.
+     * A non-null entry makes the row editable in edit mode.
+     */
     private final List<MenuLocation.DeleteRef> itemDelete = new ArrayList<>();
     private boolean hasEditToggle = false;
     private boolean visible = false;
     private int width = MIN_WIDTH;
     private boolean widthDirty = true;
+    /** Submenu currently shown to the right of this menu, or null. */
     private ContextMenu openSubmenu = null;
 
+    /** Wrapped lines of the note page, cached until the page text changes. */
     private List<FormattedCharSequence> noteLines = null;
     private String noteLinesFor = null;
 
+    /** Per-row hidden state, refreshed by ensureWidth so rendering does not scan the config list each frame. */
     private boolean[] hiddenFlags = new boolean[0];
 
     private Player player;
 
+    /**
+     * @param x the left position in GUI pixels; ignored for submenus, placed when opened
+     * @param y the top position in GUI pixels; ignored for submenus, placed when opened
+     * @param target the player the menu is about, used by commands and placeholders
+     */
     public ContextMenu(int x, int y, Player target) {
         this.x = x;
         this.y = y;
@@ -103,10 +138,18 @@ public class ContextMenu {
         return this.addActionItem(Component.literal(label), action);
     }
 
+    /**
+     * Adds a row running arbitrary code when clicked, then closing the menu.
+     *
+     * @param label the row label
+     * @param action the code to run
+     * @return this menu
+     */
     public ContextMenu addActionItem(Component label, Runnable action) {
         return push(new ActionItem(label, action));
     }
 
+    /** Appends a row with no YAML entry attached. Every add method goes through here. */
     private ContextMenu push(MenuItem item) {
         this.items.add(item);
         this.itemDelete.add(null);
@@ -114,6 +157,12 @@ public class ContextMenu {
         return this;
     }
 
+    /**
+     * Attaches a custom YAML entry to the last added row, making it editable in edit mode.
+     *
+     * @param ref the entry the row was built from
+     * @return this menu
+     */
     public ContextMenu markLastDeletable(MenuLocation.DeleteRef ref) {
         if (!this.itemDelete.isEmpty())
             this.itemDelete.set(this.itemDelete.size() - 1, ref);
@@ -121,6 +170,14 @@ public class ContextMenu {
         return this;
     }
 
+    /**
+     * Adds the green "add" row, whose submenu opens the dialogs creating a submenu, command or
+     * script in the given YAML list. The row is only shown in edit mode, and must be the last
+     * one since effectiveItemCount drops it by position.
+     *
+     * @param container the YAML list new entries are appended to
+     * @return this menu
+     */
     public ContextMenu addAddItem(MenuLocation container) {
         if (!EDIT_ENABLED) return this;
         ContextMenu sub = new ContextMenu(0, 0, this.player);
@@ -140,29 +197,44 @@ public class ContextMenu {
                 Component.translatable("hbtweaks.context.editor.add").withStyle(ChatFormatting.GREEN), sub));
     }
 
+    /**
+     * @return the submenu opened by a row, or null if it opens none
+     */
     private static ContextMenu submenuOf(MenuItem item) {
         if (item instanceof SubmenuItem si) return si.submenu;
         if (item instanceof AddMenuItem ai) return ai.submenu;
         return null;
     }
 
+    /**
+     * Shows the "+" edit mode toggle below the menu, unless hidden in the config.
+     *
+     * @return this menu
+     */
     public ContextMenu withEditToggle() {
         this.hasEditToggle = EDIT_ENABLED && !HBConfig.get().hidePlusBox;
         return this;
     }
 
+    /**
+     * Marks this menu as the top-level one, enabling row hiding.
+     *
+     * @return this menu
+     */
     public ContextMenu asRootMenu() {
         this.rootMenu = true;
         markWidthDirty();
         return this;
     }
 
+    /** Only built-in rows of the root menu can be hidden; custom rows are deleted instead. */
     private boolean isHideable(int i) {
         return this.rootMenu
                 && this.itemDelete.get(i) == null
                 && !(this.items.get(i) instanceof AddMenuItem);
     }
 
+    /** Hidden rows are stored by label in HBConfig.hiddenMenus. */
     private static boolean isHidden(MenuItem item) {
         return HBConfig.get().hiddenMenus.contains(item.getLabel().getString());
     }
@@ -176,6 +248,7 @@ public class ContextMenu {
         ContextMenuTrigger.rebuildAfterEdit();
     }
 
+    /** Removes hidden rows from the root menu when it opens. Skipped in edit mode, where they show with a closed eye. */
     private void applyHidden() {
         if (!this.rootMenu || editMode) return;
         for (int i = this.items.size() - 1; i >= 0; i--) {
@@ -187,6 +260,9 @@ public class ContextMenu {
         markWidthDirty();
     }
 
+    /**
+     * @return the number of drawn rows: every row, minus the trailing "add" row outside edit mode
+     */
     private int effectiveItemCount() {
         int n = this.items.size();
         if (!editMode && n > 0 && this.items.get(n - 1) instanceof AddMenuItem) n--;
@@ -215,6 +291,14 @@ public class ContextMenu {
         return this.addCommandItem(Component.literal(label), commandTemplate);
     }
 
+    /**
+     * Adds a row sending a server command when clicked. Placeholders are resolved at click time.
+     *
+     * @param label the row label
+     * @param commandTemplate the command without "/", placeholders allowed
+     * @return this menu
+     * @see #replaceString(String, Player)
+     */
     public ContextMenu addCommandItem(Component label, String commandTemplate) {
         return push(new CommandItem(label, commandTemplate, player));
     }
@@ -223,6 +307,12 @@ public class ContextMenu {
         return this.addInfoItem(Component.literal(label));
     }
 
+    /**
+     * Adds a non-interactive text row.
+     *
+     * @param label the text
+     * @return this menu
+     */
     public ContextMenu addInfoItem(Component label) {
         return push(new InfoItem(label));
     }
@@ -231,25 +321,57 @@ public class ContextMenu {
         return this.addSubmenuItem(Component.literal(label), submenu);
     }
 
+    /**
+     * Adds a row opening a submenu on hover.
+     *
+     * @param label the row label
+     * @param submenu the submenu
+     * @return this menu
+     */
     public ContextMenu addSubmenuItem(Component label, ContextMenu submenu) {
         return push(new SubmenuItem(label, submenu));
     }
 
+    /**
+     * Adds a checkbox row, which toggles without closing the menu.
+     *
+     * @param item the checkbox
+     * @return this menu
+     */
     public ContextMenu addCheckboxItem(CheckboxItem item) {
         return push(item);
     }
 
+    /**
+     * Shows the current page of a note below the rows, sized like a vanilla book page.
+     *
+     * @param block the note source
+     * @return this menu
+     */
     public ContextMenu withNoteBlock(NoteBlock block) {
         this.noteBlock = block;
         markWidthDirty();
         return this;
     }
 
+    /**
+     * Adds the row with the previous / next page arrows and the edit pen of a note.
+     *
+     * @param block the note source, usually also passed to withNoteBlock
+     * @return this menu
+     */
     public ContextMenu addNoteBar(NoteBlock block) {
         return push(new NoteBarItem(block));
     }
 
+    /**
+     * Source of a paged note shown in a menu. Keeps its own page index, clamped to the current
+     * page count, so pages can change underneath it. See NotesMenu for the implementation.
+     */
     public abstract static class NoteBlock {
+        /**
+         * @return the note's pages, possibly empty; read on every frame, so it must be cheap
+         */
         public abstract List<String> pages();
 
         private int page = 0;
@@ -258,6 +380,9 @@ public class ContextMenu {
             return Math.min(this.page, Math.max(0, pages().size() - 1));
         }
 
+        /**
+         * @return the page count, at least 1 so an empty note still shows "1/1"
+         */
         public int pageCount() {
             return Math.max(1, pages().size());
         }
@@ -278,6 +403,7 @@ public class ContextMenu {
             if (hasNext()) this.page = page() + 1;
         }
 
+        /** Opens the note editor. */
         public abstract void edit();
 
         String text() {
@@ -286,6 +412,9 @@ public class ContextMenu {
         }
     }
 
+    /**
+     * @return the height of the note block including its top separator, 0 if there is none
+     */
     private int noteBlockHeight() {
         return this.noteBlock == null ? 0 : 1 + NOTE_HEIGHT + NOTE_PAD * 2;
     }
@@ -294,10 +423,23 @@ public class ContextMenu {
         return this.y + effectiveItemCount() * itemHeight();
     }
 
+    /**
+     * Adds a row showing an item with its icon and name, and its tooltip on hover.
+     *
+     * @param stack the item
+     * @return this menu
+     */
     public ContextMenu addItemStackItem(ItemStack stack) {
         return push(new ItemStackMenuItem(stack));
     }
 
+    /**
+     * Adds a row running a multi-line script through ScriptRunner when clicked.
+     *
+     * @param label the row label
+     * @param lines the script lines
+     * @return this menu
+     */
     public ContextMenu addScriptItem(Component label, java.util.List<String> lines) {
         return push(new ScriptItem(label, new ArrayList<>(lines), player));
     }
@@ -306,6 +448,13 @@ public class ContextMenu {
         return this.addLinkItem(Component.literal(label), url);
     }
 
+    /**
+     * Adds a row opening a URL in the system browser when clicked.
+     *
+     * @param label the row label
+     * @param url the URL
+     * @return this menu
+     */
     public ContextMenu addLinkItem(Component label, String url) {
         return push(new LinkItem(label, url));
     }
@@ -314,15 +463,24 @@ public class ContextMenu {
         return this.addCopyItem(Component.literal(label), text);
     }
 
+    /**
+     * Adds a row copying text to the clipboard when clicked.
+     *
+     * @param label the row label
+     * @param text the copied text
+     * @return this menu
+     */
     public ContextMenu addCopyItem(Component label, String text) {
         return push(new CopyItem(label, text));
     }
 
+    /** Shows the menu, dropping hidden rows first if it is the root menu. */
     public void open() {
         applyHidden();
         this.visible = true;
     }
 
+    /** Hides the menu and closes its open submenu, recursively. */
     public void close() {
         this.visible = false;
         if (this.openSubmenu != null) {
@@ -343,6 +501,11 @@ public class ContextMenu {
                 tickDelta);
     }
 
+    /**
+     * Draws the menu and its open submenu. Also does the hover logic: the hovered submenu row
+     * opens its submenu, and the open submenu is closed once the mouse leaves both menus. The
+     * menu is clamped to stay on screen.
+     */
     public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, DeltaTracker tickDelta) {
         if (!this.visible) return;
 
@@ -464,6 +627,15 @@ public class ContextMenu {
         }
     }
 
+    /**
+     * Handles a click on the menu or its open submenu. Checkboxes, note bar controls, edit
+     * controls and the "+" toggle act without closing the menu.
+     *
+     * @param mouseX the mouse x, in GUI pixels
+     * @param mouseY the mouse y, in GUI pixels
+     * @param button the mouse button
+     * @return true if a row action ran and the whole menu tree should be closed
+     */
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!this.visible) {
             return false;
@@ -535,6 +707,9 @@ public class ContextMenu {
         return false;
     }
 
+    /**
+     * @return true if the point is over this menu's rows or note block, not its submenus
+     */
     public boolean containsMouse(int mx, int my) {
         return mx >= this.x
                 && mx < this.x + this.width
@@ -542,6 +717,9 @@ public class ContextMenu {
                 && my < this.y + effectiveItemCount() * itemHeight() + noteBlockHeight();
     }
 
+    /**
+     * @return true if the point is over this menu or any of its submenus, open or not
+     */
     public boolean containsMouseRecursive(int mx, int my) {
         if (this.containsMouse(mx, my))
             return true;
@@ -553,6 +731,11 @@ public class ContextMenu {
         return false;
     }
 
+    /**
+     * Finds the custom YAML entry under the mouse, looking in the open submenu first.
+     *
+     * @return the hovered entry, or null if the hovered row is built-in or nothing is hovered
+     */
     public MenuLocation.DeleteRef getHoveredDeletable(int mx, int my) {
         if (!this.visible)
             return null;
@@ -576,12 +759,14 @@ public class ContextMenu {
                 && my < rowY + itemHeight();
     }
 
+    /** Space kept right of the edit cluster for the submenu arrow. */
     private static final int EDIT_ARROW_W = 9;
 
     private int editClusterX(int i) {
         return this.x + this.width - EDIT_CLUSTER_W - 1 - EDIT_ARROW_W;
     }
 
+    /** A row can move into the row above only if that row is a custom submenu. */
     private boolean canMoveInto(int i) {
         return i > 0
                 && this.itemDelete.get(i - 1) != null
@@ -598,6 +783,10 @@ public class ContextMenu {
         return m instanceof CommandItem || m instanceof ScriptItem || m instanceof SubmenuItem;
     }
 
+    /**
+     * Whether row i can swap with row i + delta: both must come from the same YAML list. The
+     * reference comparison works because rows parsed from the same list share one MenuLocation.
+     */
     private boolean hasSwapNeighbour(int i, int delta) {
         int j = i + delta;
         if (j < 0 || j >= this.items.size())
@@ -610,6 +799,10 @@ public class ContextMenu {
     private boolean canMoveUp(int i) { return hasSwapNeighbour(i, -1); }
     private boolean canMoveDown(int i) { return hasSwapNeighbour(i, 1); }
 
+    /**
+     * Edit control under the mouse on row i. The cluster is a 3 by 2 grid: into / to parent,
+     * up / down, edit / delete. Disabled controls are reported as null.
+     */
     private EditControl hitEditControl(int mx, int my, int i) {
         if (!editMode || i < 0 || i >= this.itemDelete.size() || this.itemDelete.get(i) == null)
             return null;
@@ -630,6 +823,7 @@ public class ContextMenu {
         return null;
     }
 
+    /** Tints of the edit mode sprites: enabled, disabled, and the red delete icon. */
     private static final int EDIT_ICON = 0xFFFFFFFF;
     private static final int EDIT_ICON_DISABLED = 0xFF4A4A4A;
     private static final int EDIT_ICON_DELETE = 0xFFE05555;
@@ -652,6 +846,7 @@ public class ContextMenu {
                 EDIT_ICON_DELETE);
     }
 
+    // The eye toggle sits in the bottom cell of the cluster's last column, where delete would be.
     private int eyeX(int i) {
         return editClusterX(i) + 2 * EDIT_CELL;
     }
@@ -674,6 +869,7 @@ public class ContextMenu {
                 hidden ? EDIT_ICON_DISABLED : EDIT_ICON);
     }
 
+    /** Draws the separator and the current note page, cut to what fits in a book page. */
     private void drawNoteBlock(GuiGraphicsExtractor graphics, Minecraft mc) {
         graphics.fill(this.x, noteBlockY(), this.x + this.width, noteBlockY() + 1, ContextMenu.COLOR_BORDER);
 
@@ -698,6 +894,10 @@ public class ContextMenu {
             graphics.text(mc.font, this.noteLines.get(i), bx, by + i * NOTE_LINE, ContextMenu.COLOR_TEXT, false);
     }
 
+    /**
+     * @param name the sprite name, from textures/gui/sprites/icon
+     * @return the sprite identifier
+     */
     private static Identifier icon(String name) {
         return Identifier.fromNamespaceAndPath("hb-tweaks-context", "icon/" + name);
     }
@@ -720,6 +920,7 @@ public class ContextMenu {
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, ICON_SUBMENU, ax, ay, size, size);
     }
 
+    /** Draws a tinted sprite centred in an edit cell, with a light highlight when hovered. */
     private void drawIcon(GuiGraphicsExtractor graphics, Identifier id, int cellX, int cellY, int cellH, boolean hover, int tint) {
         if (hover)
             graphics.fill(cellX, cellY, cellX + EDIT_CELL, cellY + cellH, 0x40FFFFFF);
@@ -772,6 +973,12 @@ public class ContextMenu {
         }
     }
 
+    /**
+     * Applies the edit control under the mouse. Moves are written to the YAML file at once and
+     * the menu is rebuilt; edit and delete open a dialog.
+     *
+     * @return true if a control was clicked
+     */
     private boolean handleEditClick(int mx, int my) {
         if (!editMode) return false;
         for (int i = 0; i < effectiveItemCount(); i++) {
@@ -795,6 +1002,10 @@ public class ContextMenu {
         this.widthDirty = true;
     }
 
+    /**
+     * Recomputes the width from the widest row, including room for icons, submenu arrows and the
+     * edit cluster, and refreshes hiddenFlags. Only runs when marked dirty.
+     */
     private void ensureWidth() {
         if (!this.widthDirty) return;
         this.widthDirty = false;
@@ -817,11 +1028,13 @@ public class ContextMenu {
             this.width = Math.max(this.width, NOTE_WIDTH + paddingX() * 2);
     }
 
+    /** A row of the menu. */
     private interface MenuItem {
         Component getLabel();
         void onClick();
     }
 
+    /** Row running arbitrary code. */
     private static final class ActionItem implements MenuItem {
         private final Component label;
         private final Runnable action;
@@ -842,6 +1055,10 @@ public class ContextMenu {
         }
     }
 
+    /**
+     * Row sending a server command. Refuses to run, with a chat message, when the command needs
+     * the target's position but the target is not loaded.
+     */
     private static final class CommandItem implements MenuItem {
 
         private final Component label;
@@ -884,6 +1101,20 @@ public class ContextMenu {
         }
     }
 
+    // WARN: %mcname% and %mymcname% resolve to the real Minecraft name. In a script line sent as a
+    // chat message (no leading "/"), this reveals it publicly, bypassing the fake name masking.
+    // WARN: %mcname% and %rpname% throw a NullPointerException if the target left the tab list or
+    // has no display name. ScriptRunner does not catch it, so a delayed script line can crash the
+    // client tick.
+    /**
+     * Resolves the placeholders of a command or script line. %mcname%, %rpname%, %blockpos%,
+     * %eyepos% and %uuid% refer to the target; the same names prefixed with "my" refer to the
+     * local player.
+     *
+     * @param c the template
+     * @param player the target
+     * @return the resolved string
+     */
     public static String replaceString(String c, Player player) {
         PlayerInfo pi = Minecraft.getInstance().player.connection.getPlayerInfo(player.getUUID());
 
@@ -913,6 +1144,7 @@ public class ContextMenu {
         return c;
     }
 
+    /** Row queueing a multi-line script in ScriptRunner. */
     private static final class ScriptItem implements MenuItem {
         private final Component label;
         private final java.util.List<String> lines;
@@ -935,6 +1167,7 @@ public class ContextMenu {
         }
     }
 
+    /** Row opening a submenu on hover; clicking it does nothing. */
     private static final class SubmenuItem implements MenuItem {
         private final Component label;
         final ContextMenu submenu;
@@ -955,6 +1188,10 @@ public class ContextMenu {
         }
     }
 
+    /**
+     * The green "add" row of edit mode. Distinct from SubmenuItem so it is never hideable,
+     * editable, or counted outside edit mode.
+     */
     private static final class AddMenuItem implements MenuItem {
         private final Component label;
         final ContextMenu submenu;
@@ -975,6 +1212,10 @@ public class ContextMenu {
         }
     }
 
+    /**
+     * Checkbox row. The state lives outside the menu: subclasses read it in isChecked and write
+     * it in checked / unchecked. Clicking toggles it and keeps the menu open.
+     */
     public abstract static class CheckboxItem implements MenuItem {
         private final Component label;
 
@@ -982,10 +1223,15 @@ public class ContextMenu {
             this.label = label;
         }
 
+        /**
+         * @return the current state, read every frame to draw the box
+         */
         public abstract boolean isChecked();
 
+        /** Called when the box gets checked. */
         protected abstract void checked();
 
+        /** Called when the box gets unchecked. */
         protected abstract void unchecked();
 
         @Override
@@ -1021,10 +1267,12 @@ public class ContextMenu {
         }
     }
 
+    /** Sizes of the note bar controls, in GUI pixels. */
     private static final int NOTE_ARROW = 9;
     private static final int NOTE_PEN = 12;
     private static final int NOTE_ARROW_GAP = 3;
 
+    /** Clickable zones of the note bar: previous page, next page, edit. */
     private enum NoteZone { PREV, NEXT, EDIT }
 
     private int noteZoneX(NoteZone zone) {
@@ -1039,6 +1287,9 @@ public class ContextMenu {
         return zone == NoteZone.EDIT ? NOTE_PEN : NOTE_ARROW;
     }
 
+    /**
+     * @return the note bar zone under the mouse, or null
+     */
     private NoteZone hitNoteBar(int mx, int my, int rowY) {
         if (my < rowY || my >= rowY + itemHeight()) return null;
         for (NoteZone zone : NoteZone.values()) {
@@ -1048,6 +1299,7 @@ public class ContextMenu {
         return null;
     }
 
+    /** Draws the arrows on the left, the page counter in the middle, and the edit pen on the right. */
     private void drawNoteBar(GuiGraphicsExtractor graphics, Minecraft mc, NoteBlock block,
                              int rowY, int mouseX, int mouseY) {
         NoteZone hover = hitNoteBar(mouseX, mouseY, rowY);
@@ -1074,6 +1326,7 @@ public class ContextMenu {
                 ContextMenu.COLOR_TEXT, false);
     }
 
+    /** Plain text row, never highlighted. */
     private static final class InfoItem implements MenuItem {
         private final Component label;
 
@@ -1091,6 +1344,7 @@ public class ContextMenu {
         }
     }
 
+    /** Row showing an item icon and name, with the item tooltip on hover. */
     private static final class ItemStackMenuItem implements MenuItem {
         private final ItemStack stack;
 
@@ -1109,6 +1363,7 @@ public class ContextMenu {
         }
     }
 
+    /** Row opening a URL in the system browser. */
     private static final class LinkItem implements MenuItem {
         private final Component label;
         private final String url;
@@ -1133,6 +1388,7 @@ public class ContextMenu {
         }
     }
 
+    /** Row copying text to the clipboard. */
     private static final class CopyItem implements MenuItem {
         private final Component label;
         private final String text;
@@ -1153,6 +1409,13 @@ public class ContextMenu {
         }
     }
 
+    /**
+     * Appends every row of another menu, keeping their YAML entries. Used to add the custom
+     * rows to a built-in menu.
+     *
+     * @param cm the menu to take the rows from
+     * @return this menu
+     */
     public ContextMenu merge(ContextMenu cm) {
         this.items.addAll(cm.items);
         this.itemDelete.addAll(cm.itemDelete);

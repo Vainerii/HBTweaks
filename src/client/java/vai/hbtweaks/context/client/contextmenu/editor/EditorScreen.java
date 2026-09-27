@@ -9,11 +9,21 @@ import dev.lambdaurora.spruceui.widget.container.SpruceContainerWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
+/**
+ * Base of the custom menu editor dialogs: a centred, bordered panel with the title at the top.
+ * Subclasses fill the panel in build.
+ */
 abstract class EditorScreen extends SpruceScreen {
     protected final Screen parent;
     protected final int panelW;
     protected final int panelH;
 
+    /**
+     * @param parent the screen to return to
+     * @param title the panel title
+     * @param panelW the panel width, in GUI pixels
+     * @param panelH the panel height, in GUI pixels
+     */
     protected EditorScreen(Screen parent, Component title, int panelW, int panelH) {
         super(title);
         this.parent = parent;
@@ -41,8 +51,14 @@ abstract class EditorScreen extends SpruceScreen {
         this.addRenderableWidget(panel);
     }
 
+    /**
+     * Adds the dialog's widgets to the panel. Positions are relative to the panel.
+     *
+     * @param panel the panel, already containing the title
+     */
     protected abstract void build(SpruceContainerWidget panel);
 
+    /** Returns to the parent screen, to be called once the dialog's action is applied. */
     protected void done() {
         this.minecraft.setScreen(this.parent);
     }

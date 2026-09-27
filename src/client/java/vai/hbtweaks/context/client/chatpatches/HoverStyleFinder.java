@@ -28,6 +28,11 @@ public class HoverStyleFinder implements ActiveTextCollector {
     private @Nullable Style result;
     private final Consumer<Style> styleScanner;
 
+    /**
+     * @param font the font used to lay out the collected text
+     * @param testX the tested x position, in GUI pixels
+     * @param testY the tested y position, in GUI pixels
+     */
     public HoverStyleFinder(final Font font, final int testX, final int testY) {
         this.defaultParameters = INITIAL;
         this.styleScanner = (style) -> {
@@ -70,6 +75,9 @@ public class HoverStyleFinder implements ActiveTextCollector {
     //    return this;
     //}
 
+    /**
+     * @return the last style with a hover event found under the tested position, or null
+     */
     public @Nullable Style result() {
         return this.result;
     }

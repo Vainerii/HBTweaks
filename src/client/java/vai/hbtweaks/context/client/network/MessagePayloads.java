@@ -9,10 +9,15 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import vai.hbtweaks.context.client.keyboard.WritersBank;
 
+/**
+ * Registers the handshake and typing packets. The handshake tells the server this client has
+ * the mod; it is sent on join only if the server accepts that channel.
+ */
 public final class MessagePayloads {
 
     private MessagePayloads() {}
 
+    /** Registers the packets, the typing receivers feeding WritersBank, and the join handshake. */
     public static void init() {
         Packets.registerC2S(ServerboundHerobrineTweaksHandshakePacket.PACKET_INFO);
         Packets.registerC2S(ServerboundStartTypingPacket.PACKET_INFO);

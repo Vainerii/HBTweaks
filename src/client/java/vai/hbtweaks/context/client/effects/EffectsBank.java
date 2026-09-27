@@ -8,6 +8,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Last known potion effects of other players, by UUID, as received from the server through
+ * EffectPayloads.
+ */
 public class EffectsBank {
 
     private static final Map<UUID, List<MobEffectInstance>> INSTANCE = new HashMap<>();
@@ -20,6 +24,10 @@ public class EffectsBank {
         return get(player.getUUID());
     }
 
+    /**
+     * @param uuid the player's UUID
+     * @return the player's effects, or an empty list if none were received
+     */
     public static List<MobEffectInstance> get(UUID uuid) {
         return INSTANCE.getOrDefault(uuid, List.of());
     }

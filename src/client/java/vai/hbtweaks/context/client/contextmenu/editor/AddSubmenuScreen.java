@@ -7,8 +7,12 @@ import dev.lambdaurora.spruceui.widget.text.SpruceTextFieldWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
+/**
+ * Dialog creating an empty submenu in a custom menu, or renaming an existing one.
+ */
 public class AddSubmenuScreen extends EditorScreen {
     private final MenuLocation location;
+    /** Index of the renamed entry, or -1 when creating a new one. */
     private final int editIndex;
     private final String initialName;
     private SpruceTextFieldWidget nameField;
@@ -17,6 +21,14 @@ public class AddSubmenuScreen extends EditorScreen {
         this(parent, location, -1, "");
     }
 
+    /**
+     * Rename mode when editIndex is 0 or more.
+     *
+     * @param parent the screen to return to
+     * @param location the list holding the entry
+     * @param editIndex the entry index, or -1 to create
+     * @param name the current label
+     */
     public AddSubmenuScreen(Screen parent, MenuLocation location, int editIndex, String name) {
         super(parent, Component.translatable("hbtweaks.context.editor.add_submenu"), 220, 92);
         this.location = location;

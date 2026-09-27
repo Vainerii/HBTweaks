@@ -11,6 +11,10 @@ import vai.hbtweaks.context.client.contextmenu.editor.EditorStyle;
 
 import java.util.function.Consumer;
 
+/**
+ * Small modal asking for a single name, used by the notes screens to create, rename or
+ * duplicate a note. Blank names are refused.
+ */
 public class NamePromptScreen extends Screen {
 
     private static final int PANEL_W = 220;
@@ -22,6 +26,12 @@ public class NamePromptScreen extends Screen {
     private final Consumer<String> onConfirm;
     private SpruceTextFieldWidget field;
 
+    /**
+     * @param parent the screen to return to
+     * @param title the prompt title, also used as the field's label
+     * @param initial the initial field content
+     * @param onConfirm called with the trimmed name when confirmed
+     */
     public NamePromptScreen(Screen parent, Component title, String initial, Consumer<String> onConfirm) {
         super(title);
         this.parent = parent;

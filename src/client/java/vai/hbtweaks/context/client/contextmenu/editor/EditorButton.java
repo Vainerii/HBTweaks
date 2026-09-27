@@ -8,6 +8,10 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
+/**
+ * Flat SpruceUI button matching the editor style: filled background, 1 pixel border, centred
+ * label, dimmed when inactive.
+ */
 public final class EditorButton extends AbstractSpruceWidget {
     private final Component label;
     private final Runnable onClick;
@@ -18,6 +22,17 @@ public final class EditorButton extends AbstractSpruceWidget {
         this(position, w, h, label, onClick, EditorStyle.BTN_BG, EditorStyle.BTN_HOVER);
     }
 
+    /**
+     * Button with custom background colours, e.g. EditorStyle.DANGER for destructive actions.
+     *
+     * @param position the position
+     * @param w the width
+     * @param h the height
+     * @param label the label
+     * @param onClick the action run on click
+     * @param bg the background colour
+     * @param hoverBg the background colour while hovered
+     */
     public EditorButton(Position position, int w, int h, Component label, Runnable onClick, int bg, int hoverBg) {
         super(position);
         this.width = w;

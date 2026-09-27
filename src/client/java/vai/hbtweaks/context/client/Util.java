@@ -16,13 +16,30 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Shared helpers about players: names (Minecraft, roleplay, fake), heads, permission checks,
+ * NPC detection, and the small indicator components shown next to names.
+ */
 public class Util {
 
+    /**
+     * Maximum raycast distance used by the entity trackers: the chunk render distance in
+     * blocks, capped at 64.
+     *
+     * @return the ray length in blocks
+     */
     public static int rayLength() {
         // If entities are further than the player view settings, no need to check
         return Math.min(64, Minecraft.getInstance().options.getEffectiveRenderDistance() * 16);
     }
 
+    /**
+     * Short coloured symbol summarising a distance, from "[#]" (very close) to "[:]"
+     * (over 100 blocks).
+     *
+     * @param dist the distance in blocks
+     * @return the indicator component
+     */
     public static MutableComponent distanceIndicator(double dist) {
         if (dist > 100f) return Component.literal("[:]").withStyle(ChatFormatting.WHITE);
         if (dist > 50f)  return Component.literal("[!]").withStyle(ChatFormatting.RED);
@@ -32,6 +49,14 @@ public class Util {
         return Component.literal("[#]").withStyle(ChatFormatting.DARK_AQUA);
     }
 
+    /**
+     * Three dots showing whether a player is typing. While typing, each dot brightens in turn
+     * over a 32 tick cycle; otherwise they stay dark grey. A trailing "?" means the player has
+     * never been seen typing, so they may not have the mod at all.
+     *
+     * @param target the player to check
+     * @return the indicator component, meant to be rebuilt every tick for the animation
+     */
     public static MutableComponent writingIndicator(Player target) {
         MutableComponent out = Component.empty();
         boolean writing = WritersBank.isWriting(target);
@@ -49,6 +74,14 @@ public class Util {
         return out;
     }
 
+    /**
+     * Real Minecraft account name of a player, read from the tab list profile. Must not be
+     * shown as is to players without permission.
+     *
+     * @param player the player
+     * @return the account name, or null if the player is not in the tab list
+     * @see #getVisibleMCName(Player)
+     */
     public static String getMCName(Player player) {
         LocalPlayer me = Minecraft.getInstance().player;
         if (me == null) return null;
@@ -57,6 +90,12 @@ public class Util {
         return pi.getProfile().name();
     }
 
+    /**
+     * Roleplay name of a player, which the server puts in the tab list display name.
+     *
+     * @param player the player
+     * @return the roleplay name, null if the player is not in the tab list or has none
+     */
     public static Component getRpName(Player player) {
         try {
             LocalPlayer me = Minecraft.getInstance().player;
@@ -69,10 +108,21 @@ public class Util {
         }
     }
 
+    /** Cached head component, tied to the PlayerInfo it was built from. */
     private record Head(PlayerInfo info, Component component) { }
 
+    /**
+     * Head components by player UUID. An entry is rebuilt when the player's PlayerInfo instance
+     * changes (e.g. after a relog or skin change), and the whole cache is cleared on disconnect.
+     */
     private static final Map<UUID, Head> HEADS = new HashMap<>();
 
+    /**
+     * Inline sprite of the player's head followed by a space, meant to prefix a name.
+     *
+     * @param player the player
+     * @return the head component, or an empty component if unavailable
+     */
     public static Component getHead(Player player) {
         try {
             LocalPlayer me = Minecraft.getInstance().player;
@@ -95,6 +145,13 @@ public class Util {
         HEADS.clear();
     }
 
+    /**
+     * Fake Minecraft name of a player, carried by the "minecraft_name" property of its profile.
+     * It hides the real account name from players without permission.
+     *
+     * @param player the player
+     * @return the fake name, or null if the player has none
+     */
     public static String getFakeName(Player player) {
         LocalPlayer me = Minecraft.getInstance().player;
         if (me == null) return null;
@@ -110,6 +167,14 @@ public class Util {
     }
 
     // Minecraft name to display without perms
+    /**
+     * Minecraft name that the local player is allowed to see: the fake name if the target has
+     * one and the local player has no permission, the real name otherwise. This is a privacy
+     * feature, the real name must never leak to regular players.
+     *
+     * @param player the player
+     * @return the name to display, or null if unavailable
+     */
     public static String getVisibleMCName(Player player) {
         String fake = getFakeName(player);
         if (!hasPerm() && fake != null)
@@ -118,6 +183,13 @@ public class Util {
     }
 
     // It's working. but NPC are not simply easy to differentiate from players, so, lets stay vigilant.
+    /**
+     * Best-effort test telling a real player apart from the server's NPCs, which are fake
+     * players. A real player has gravity and a non-empty tab list display name.
+     *
+     * @param player the player to test
+     * @return true if the player looks like a real one
+     */
     public static boolean isReal(Player player) {
         try {
             if (player.isNoGravity()) return false;
@@ -135,6 +207,13 @@ public class Util {
         return HBTweaksContextClient.DEBUG_MODE;
     }
 
+    /**
+     * Whether the local player counts as a game master. Approximated by creative or spectator
+     * mode, unless the DebugPerm override is active. Gates game master menu entries, real name
+     * visibility and targeting through walls.
+     *
+     * @return true if the local player has game master permissions
+     */
     public static boolean hasPerm() {
         if (DebugPerm.ENABLED)
             return DebugPerm.get();

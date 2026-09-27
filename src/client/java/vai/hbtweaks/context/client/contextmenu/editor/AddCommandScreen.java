@@ -8,7 +8,13 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
+/**
+ * Dialog creating or editing a single-command entry of a custom menu. The command field always
+ * starts with "/", which is stripped before saving. The right column lists the available
+ * placeholders.
+ */
 public class AddCommandScreen extends EditorScreen {
+    /** Placeholders shown as help: the tag, then the translation key of its description. */
     private static final String[][] TAGS = {
             {"%mcname%", "hbtweaks.context.editor.tag.mcname"},
             {"%rpname%", "hbtweaks.context.editor.tag.rpname"},
@@ -23,16 +29,32 @@ public class AddCommandScreen extends EditorScreen {
     };
 
     private final MenuLocation location;
+    /** Index of the edited entry, or -1 when creating a new one. */
     private final int editIndex;
     private final String initialName;
     private final String initialCommand;
     private SpruceTextFieldWidget nameField;
     private SpruceTextFieldWidget commandField;
 
+    /**
+     * Creation mode.
+     *
+     * @param parent the screen to return to
+     * @param location the list the entry is appended to
+     */
     public AddCommandScreen(Screen parent, MenuLocation location) {
         this(parent, location, -1, "", "");
     }
 
+    /**
+     * Edit mode when editIndex is 0 or more, prefilled with the current values.
+     *
+     * @param parent the screen to return to
+     * @param location the list holding the entry
+     * @param editIndex the entry index, or -1 to create
+     * @param name the current label
+     * @param command the current command, without "/"
+     */
     public AddCommandScreen(Screen parent, MenuLocation location, int editIndex, String name, String command) {
         super(parent, Component.translatable("hbtweaks.context.editor.add_command"), 460, 160);
         this.location = location;
@@ -94,6 +116,7 @@ public class AddCommandScreen extends EditorScreen {
         }
     }
 
+    /** Saves the entry if both fields are filled, otherwise stays open. */
     private void submit() {
         String name = this.nameField.getText().trim();
         String command = this.commandField.getText().trim();

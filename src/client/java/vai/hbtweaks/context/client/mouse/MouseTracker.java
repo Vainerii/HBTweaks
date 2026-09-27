@@ -21,16 +21,29 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Tracks which entities are under the mouse cursor while it is free (chat or cursor screen),
+ * and fires MouseTrackerEntityClickUpCallback when a mouse button is released.
+ * <p>
+ * The raycast runs on odd GUI ticks only, so it never shares a tick with LookAtInfoBox, which
+ * runs on even ones. Mouse buttons are still polled every tick so short clicks are not lost.
+ */
 public class MouseTracker implements ClientTickEvents.EndTick {
 
+    /** Entities under the cursor, nearest first. Empty while the mouse is grabbed. */
     private static volatile List<Entity> hoveredEntities = List.of();
 
+    /**
+     * @return the entities under the cursor as of the last raycast, nearest first
+     */
     public static List<Entity> getHoveredEntities() {
         return hoveredEntities;
     }
 
+    /** An entity crossed by the ray, with the entry point and its squared distance to the camera. */
     private record Hit(double distSqr, Vec3 point, Entity entity) { }
 
+    /** Reused buffer for the raycast, to avoid an allocation per tick. */
     private final List<Hit> hits = new ArrayList<>();
 
     private boolean leftDown = false;
@@ -41,6 +54,14 @@ public class MouseTracker implements ClientTickEvents.EndTick {
         ClientTickEvents.END_CLIENT_TICK.register(new MouseTracker());
     }
 
+    /**
+     * Collects the entities crossed by a ray from the camera, sorted by distance. Only real
+     * players are kept, unless developer mode is on. Without permission, the leading entities
+     * hidden behind opaque blocks are dropped, so players cannot be targeted through walls.
+     *
+     * @param rayDirection the direction of the ray, in world space
+     * @return the crossed entities, nearest first
+     */
     private List<Entity> getRayCastedEntities(Vec3 rayDirection) {
         Minecraft mc = Minecraft.getInstance();
         Entity ce = mc.getCameraEntity();
@@ -65,6 +86,8 @@ public class MouseTracker implements ClientTickEvents.EndTick {
         if (this.hits.isEmpty()) return List.of();
         this.hits.sort(Comparator.comparingDouble(Hit::distSqr));
 
+        // Skip the nearest hits that are occluded. Once one is visible, everything behind it is
+        // kept without further occlusion checks.
         int from = 0;
         if (!Util.hasPerm()) {
             while (from < this.hits.size() && isOccluded(ce, origin, this.hits.get(from).point()))
@@ -78,6 +101,14 @@ public class MouseTracker implements ClientTickEvents.EndTick {
         return List.copyOf(out);
     }
 
+    /**
+     * Whether an opaque block stands between two points. Transparent blocks are ignored.
+     *
+     * @param ce the camera entity, used to get the level
+     * @param origin the start of the segment
+     * @param target the end of the segment
+     * @return true if the segment is blocked
+     */
     private boolean isOccluded(Entity ce, Vec3 origin, Vec3 target) {
         Level level = ce.level();
         Boolean hit = BlockGetter.traverseBlocks(origin, target, null,
@@ -92,6 +123,12 @@ public class MouseTracker implements ClientTickEvents.EndTick {
         return Boolean.TRUE.equals(hit);
     }
 
+    /**
+     * Converts the mouse cursor position into a world space direction from the camera, by
+     * unprojecting it through the camera field of view.
+     *
+     * @return the normalised ray direction, or null if the camera is not ready
+     */
     private Vec3 pixelRayCast() {
         Minecraft mc = Minecraft.getInstance();
         Camera camera = mc.gameRenderer.getMainCamera();
@@ -113,6 +150,7 @@ public class MouseTracker implements ClientTickEvents.EndTick {
         double xm = mc.mouseHandler.xpos() * sx;
         double ym = mc.mouseHandler.ypos() * sy;
 
+        // Pixel to normalised device coordinates (-1 to 1), then to the camera plane at distance 1.
         double x_ndc = (2.0 * xm / screenWidth) - 1.0;
         double y_ndc = 1.0 - (2.0 * ym / screenHeight);
 
@@ -133,6 +171,10 @@ public class MouseTracker implements ClientTickEvents.EndTick {
                 .normalize();
     }
 
+    /**
+     * Refreshes the hovered entities every other tick, then polls the three mouse buttons and
+     * fires a click up event for each one released since the previous tick.
+     */
     @Override
     public void onEndTick(Minecraft minecraft) {
         MouseHandler mh = minecraft.mouseHandler;

@@ -12,6 +12,13 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import vai.hbtweaks.context.client.HitboxDebug;
 
+/**
+ * Extends the vanilla hitbox debug view (F3+B) for developers, driven by the HitboxDebug flags:
+ * the invisibility check is redirected so invisible entities can be shown (and visible ones
+ * hidden), and every cuboid, point and arrow gizmo can be forced on top of the world geometry.
+ *
+ * @see HitboxDebug
+ */
 @Mixin(EntityHitboxDebugRenderer.class)
 public class EntityHitboxDebugRendererMixin {
 

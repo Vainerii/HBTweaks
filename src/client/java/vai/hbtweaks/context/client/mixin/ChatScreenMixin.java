@@ -7,6 +7,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import vai.hbtweaks.context.client.keyboard.WritingObserver;
 
+/**
+ * Forwards every edit of the chat input to WritingObserver, which drives the "is writing"
+ * indicator.
+ */
 @Mixin(ChatScreen.class)
 public class ChatScreenMixin {
 

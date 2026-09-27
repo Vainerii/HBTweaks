@@ -1,5 +1,8 @@
 package vai.hbtweaks.context.client.contextmenu.editor;
 
+/**
+ * Colours (0xAARRGGBB) and metrics shared by the editor dialogs and the notes screens.
+ */
 public final class EditorStyle {
     private EditorStyle() {}
 

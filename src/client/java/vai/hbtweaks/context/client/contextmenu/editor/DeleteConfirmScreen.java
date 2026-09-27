@@ -6,6 +6,9 @@ import dev.lambdaurora.spruceui.widget.container.SpruceContainerWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
+/**
+ * Confirmation dialog before deleting an entry from a custom menu file.
+ */
 public class DeleteConfirmScreen extends EditorScreen {
     private final MenuLocation.DeleteRef ref;
 

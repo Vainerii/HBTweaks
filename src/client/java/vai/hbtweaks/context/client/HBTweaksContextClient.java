@@ -26,18 +26,34 @@ import vai.hbtweaks.context.client.script.ScriptRunner;
 
 import java.io.File;
 
+/**
+ * Client entry point of the mod. Wires every feature (config, info box, context menus,
+ * typing indicator, networking, scripts, debug tools) onto Fabric events.
+ */
 public class HBTweaksContextClient implements ClientModInitializer {
 
 	private static final ContextMenuTrigger cmt = new ContextMenuTrigger();
 	private static final SendMessageTrigger smt = new SendMessageTrigger();
 
+	/**
+	 * Developer mode, enabled when a <code>.hbtweaks_debug</code> file exists in the game
+	 * directory. Unlocks the debug menu and the <code>/hbtdebug</code> command.
+	 */
 	public static final boolean DEBUG_MODE = new File(".hbtweaks_debug").exists();
 
 	private static final LookAtInfoBox lookAtInfoBox = new LookAtInfoBox();
 
+	/**
+	 * Keybind (default R) that opens a CursorScreen, freeing the mouse cursor so players can be
+	 * hovered and right-clicked outside of the chat.
+	 */
 	public static final KeyMapping CURSOR_KEY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.hb-tweaks-context.cursor", GLFW.GLFW_KEY_R, KeyMapping.Category.MISC));
 
+	/**
+	 * Loads the config and debug state, then registers every listener. The context menu hooks
+	 * are only attached to ChatScreen and CursorScreen, the two screens where it can be opened.
+	 */
 	@Override
 	public void onInitializeClient() {
 		//new HerobrinePlayerListener().register();

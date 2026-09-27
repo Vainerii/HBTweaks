@@ -8,8 +8,14 @@ import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import vai.hbtweaks.context.client.screen.CursorScreen;
 
+/**
+ * Coarse category of the open screen, passed along with mouse click events. Constants are
+ * matched in declaration order, so more specific screens must come before their parents.
+ */
 public enum ScreenType {
     INVENTORY(InventoryScreen.class),
+    // WARN: CreativeModeInventoryScreen extends AbstractContainerScreen, so CONTAINER matches it
+    // first and CREATIVE_INVENTORY is never returned.
     CONTAINER(AbstractContainerScreen.class),
     CHAT(ChatScreen.class),
     PAUSE(PauseScreen.class),
@@ -23,6 +29,10 @@ public enum ScreenType {
         this.screenClass = screenClass;
     }
 
+    /**
+     * @param screen the open screen, may be null
+     * @return the first matching type, UNKNOWN if none matches, or null if no screen is open
+     */
     public static ScreenType fromScreen(Screen screen) {
         if (screen == null) return null;
         for (ScreenType type : values()) {

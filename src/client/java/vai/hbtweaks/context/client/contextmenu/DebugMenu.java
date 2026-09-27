@@ -45,15 +45,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Developer-only "Debug" submenus, shown when developer mode is on. The other-player version
+ * inspects the target (identity, position, state, bank contents, profile properties); the self
+ * version adds hitbox toggles, network channel status, runtime counters, the hovered entities,
+ * the loaded players, and maintenance actions. Most rows copy their full value on click.
+ */
 public final class DebugMenu {
 
+    /** Longer values are cut in the label but still copied in full. */
     private static final int LABEL_MAX = 40;
+    /** Maximum number of hovered entities listed. */
     private static final int HOVERED_MAX = 10;
+    /** Radius, in blocks, of the "Dump closest entities" action. */
     private static final double DUMP_RANGE = 3.0;
     private static final Gson DUMP_GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private DebugMenu() {}
 
+    /** Adds a "key: value" row that copies the full value when clicked. */
     private static void row(ContextMenu menu, String key, String value) {
         String v = value == null ? "null" : value;
         String shown = v.length() > LABEL_MAX ? v.substring(0, LABEL_MAX) + "… (" + v.length() + ")" : v;
@@ -61,6 +71,7 @@ public final class DebugMenu {
                 .append(Component.literal(shown).withStyle(ChatFormatting.WHITE)), v);
     }
 
+    /** Adds a "key: value" row with the boolean coloured green or red. */
     private static void row(ContextMenu menu, String key, boolean value) {
         menu.addCopyItem(Component.literal(key + ": ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(String.valueOf(value))
@@ -74,6 +85,10 @@ public final class DebugMenu {
 
     // ---------------------------------------------------------------- other player
 
+    /**
+     * @param player the inspected player
+     * @return the debug submenu of another player's context menu
+     */
     public static ContextMenu forPlayer(Player player) {
         Minecraft mc = Minecraft.getInstance();
         ContextMenu menu = new ContextMenu(0, 0, player);
@@ -170,6 +185,10 @@ public final class DebugMenu {
 
     // ---------------------------------------------------------------- self
 
+    /**
+     * @param self the local player
+     * @return the debug submenu of the local player's context menu
+     */
     public static ContextMenu forSelf(Player self) {
         ContextMenu menu = new ContextMenu(0, 0, self);
         menu.addCheckboxItem(new ContextMenu.CheckboxItem(
@@ -217,6 +236,7 @@ public final class DebugMenu {
         return menu;
     }
 
+    /** Whether the server accepts each channel this mod sends on. */
     private static ContextMenu network(Player self) {
         ContextMenu m = new ContextMenu(0, 0, self);
         row(m, "handshake", ClientPlayNetworking.canSend(
@@ -280,6 +300,7 @@ public final class DebugMenu {
         return m;
     }
 
+    /** Logs the entity's full NBT, as known by the client. */
     private static void printNbt(Entity e) {
         try (ProblemReporter.ScopedCollector reporter = new ProblemReporter.ScopedCollector(e.problemPath(), HBTweaksContext.LOGGER)) {
             TagValueOutput output = TagValueOutput.createWithContext(reporter, e.registryAccess());
@@ -333,6 +354,10 @@ public final class DebugMenu {
         return m;
     }
 
+    /**
+     * Writes the NBT of every non-player entity within DUMP_RANGE of the local player as JSON
+     * files, in a new timestamped folder under <code>entity_dump</code> in the game directory.
+     */
     private static void dumpClosestEntities(Player self) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
@@ -373,6 +398,7 @@ public final class DebugMenu {
         }
     }
 
+    /** Re-reads both custom menu YAML files, e.g. after editing them by hand. */
     private static void reloadMenus() {
         ContextMenuTrigger.onFileEdited(ContextMenuTrigger.CUSTOM_MENU,
                 CustomContextMenuLoader.readYaml(ContextMenuTrigger.CUSTOM_MENU));

@@ -11,6 +11,10 @@ import dev.isxander.yacl3.api.controller.TickBoxControllerBuilder;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
+/**
+ * ModMenu entry point that builds the YACL config screen for HBConfig. Every label and tooltip
+ * is a translation key.
+ */
 public class ModMenuIntegration implements ModMenuApi {
 
     private static final Component title = Component.translatable("hbtweaks.context.config.title");
@@ -40,6 +44,13 @@ public class ModMenuIntegration implements ModMenuApi {
         return ModMenuIntegration::createConfigScreen;
     }
 
+    /**
+     * Builds the config screen. Changes are written to HBConfig and saved when the screen is
+     * confirmed.
+     *
+     * @param parent the screen to return to when closed
+     * @return the config screen
+     */
     public static Screen createConfigScreen(Screen parent) {
         HBConfig cfg = HBConfig.get();
         HBConfig def = HBConfig.HANDLER.defaults();
