@@ -13,7 +13,9 @@ import net.minecraft.world.item.component.ResolvableProfile;
 import vai.hbtweaks.context.client.keyboard.WritersBank;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class Util {
@@ -93,6 +95,7 @@ public class Util {
 
     public static void clearCaches() {
         HEADS.clear();
+        KNOWN_REAL.clear();
     }
 
     public static String getFakeName(Player player) {
@@ -117,15 +120,25 @@ public class Util {
         return getMCName(player);
     }
 
+    private static final Set<UUID> KNOWN_REAL = new HashSet<>();
+
     // It's working. but NPC are not simply easy to differentiate from players, so, lets stay vigilant.
+    // Soon the ClientInfo packet will be implemented and could certify a player is real
     public static boolean isReal(Player player) {
         try {
+            UUID id = player.getUUID();
+            // Once real it's always real BUT
+            // Once fake is not, it may just be some info are still missing
+            if (KNOWN_REAL.contains(id)) return true;
             if (player.isNoGravity()) return false;
             LocalPlayer me = Minecraft.getInstance().player;
             if (me == null) return false;
-            PlayerInfo pi = me.connection.getPlayerInfo(player.getUUID());
+            PlayerInfo pi = me.connection.getPlayerInfo(id);
             if (pi == null) return false;
-            return pi.getTabListDisplayName() != null && !pi.getTabListDisplayName().getString().isEmpty();
+            Component tabName = pi.getTabListDisplayName();
+            if (tabName == null || tabName.getString().isEmpty()) return false;
+            KNOWN_REAL.add(id);
+            return true;
         } catch (Exception ignored) {
             return false;
         }

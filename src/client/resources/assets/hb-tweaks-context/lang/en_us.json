@@ -58,6 +58,7 @@
   "hbtweaks.context.notes.edit": "Edit",
   "hbtweaks.context.notes.delete": "Delete",
   "hbtweaks.context.notes.delete_confirm": "Delete the note on \"%s\" ?",
+  "hbtweaks.context.giveitem": "Give held item",
   "hbtweaks.context.writing": "Is writing...",
   "key.hb-tweaks-context.cursor": "Free cursor"
 }

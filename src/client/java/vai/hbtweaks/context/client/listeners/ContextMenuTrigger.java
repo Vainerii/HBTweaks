@@ -33,8 +33,11 @@ import vai.hbtweaks.context.client.contextmenu.editor.AddSubmenuScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.DeleteConfirmScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
 import vai.hbtweaks.context.client.keyboard.WritingStatusSender;
+import vai.hbtweaks.context.client.PlayerOutline;
 import vai.hbtweaks.context.client.Util;
+import vai.hbtweaks.context.client.WorldTint;
 import vai.hbtweaks.context.client.config.HBConfig;
+import vai.hbtweaks.context.client.network.GiveItemToPlayerPayloads;
 import vai.hbtweaks.context.client.notes.NotesMenu;
 import vai.hbtweaks.context.client.notes.NotesScreen;
 import vai.hbtweaks.context.client.mouse.MouseTracker;
@@ -207,6 +210,31 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
                     WritingStatusSender.stopWriting();
                 }
             });
+            options.addCheckboxItem(new ContextMenu.CheckboxItem(
+                    // It's tint, not really fog
+                    Component.literal("Retirer le fog")) {
+                @Override public boolean isChecked() {
+                    return WorldTint.isNeutral();
+                }
+                @Override protected void checked() {
+                    WorldTint.setNeutral(true);
+                }
+                @Override protected void unchecked() {
+                    WorldTint.setNeutral(false);
+                }
+            });
+            options.addCheckboxItem(new ContextMenu.CheckboxItem(
+                    Component.literal("Voir les joueurs à travers les murs")) {
+                @Override public boolean isChecked() {
+                    return PlayerOutline.isEnabled();
+                }
+                @Override protected void checked() {
+                    PlayerOutline.setEnabled(true);
+                }
+                @Override protected void unchecked() {
+                    PlayerOutline.setEnabled(false);
+                }
+            });
             /*
             options.addCheckboxItem(new ContextMenu.CheckboxItem(Component.literal("Montrer mon pseudo")) {
                 @Override public boolean isChecked() {
@@ -297,6 +325,10 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
                 addSubmenuIfPresent("Reput", makeReputContextMenu(targetPlayer));
             if (isCommandAvailable("avisok"))
                 addSubmenuIfPresent("Avis", makeAvisContextMenu(targetPlayer));
+            if (GiveItemToPlayerPayloads.canGive())
+                ContextMenuTrigger.contextMenu.addActionItem(
+                        Component.translatable("hbtweaks.context.giveitem"),
+                        () -> GiveItemToPlayerPayloads.giveToPlayer(targetPlayer.getUUID()));
             if (loaded && hasPerm())
                 addSubmenuIfPresent("Items", makeInvContextMenu(targetPlayer));
             if (ContextMenuTrigger.customMenu != null)

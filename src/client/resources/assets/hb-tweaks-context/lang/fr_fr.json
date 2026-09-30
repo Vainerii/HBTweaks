@@ -58,6 +58,7 @@
   "hbtweaks.context.notes.edit": "Éditer",
   "hbtweaks.context.notes.delete": "Supprimer",
   "hbtweaks.context.notes.delete_confirm": "Supprimer la note de \"%s\" ?",
+  "hbtweaks.context.giveitem": "Donner l'objet tenu",
   "hbtweaks.context.writing": "En train d'écrire...",
   "key.hb-tweaks-context.cursor": "Curseur libre"
 }

@@ -5,7 +5,9 @@
 	"client": [
 		"ChatScreenAccessor",
 		"ChatScreenMixin",
-		"EntityHitboxDebugRendererMixin"
+		"EntityHitboxDebugRendererMixin",
+		"EnvironmentAttributeProbeMixin",
+		"MinecraftGlowingMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
