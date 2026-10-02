@@ -3,8 +3,10 @@
 	"package": "vai.hbtweaks.context.client.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
+		"AvatarRendererMixin",
 		"ChatScreenAccessor",
 		"ChatScreenMixin",
+		"ItemInHandLayerMixin",
 		"EntityHitboxDebugRendererMixin",
 		"EnvironmentAttributeProbeMixin",
 		"MinecraftGlowingMixin"

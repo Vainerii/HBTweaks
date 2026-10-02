@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
 import vai.hbtweaks.context.client.network.GiveItemToPlayerPayloads;
+// import vai.hbtweaks.context.client.render.BackItemCommand;
 import vai.hbtweaks.context.client.screen.CursorScreen;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
@@ -46,6 +47,8 @@ public class HBTweaksContextClient implements ClientModInitializer {
 		DebugPerm.load();
 		if (DebugPerm.ENABLED)
 			DebugCommand.register();
+		// Temporary tuning command, disabled now the placement is settled.
+		// BackItemCommand.register();
 
 		ClientTickEvents.END_CLIENT_TICK.register(lookAtInfoBox);
 		lookAtInfoBox.register();
