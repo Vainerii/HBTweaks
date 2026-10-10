@@ -15,11 +15,13 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.screens.ChatScreen;
 import vai.hbtweaks.context.HBTweaksContext;
+import vai.hbtweaks.context.client.clientinfo.ClientInfoBank;
 import vai.hbtweaks.context.client.config.HBConfig;
 import vai.hbtweaks.context.client.listeners.ContextMenuTrigger;
 import vai.hbtweaks.context.client.listeners.LookAtInfoBox;
 import vai.hbtweaks.context.client.listeners.SendMessageTrigger;
 import vai.hbtweaks.context.client.keyboard.WritingStatusSender;
+import vai.hbtweaks.context.client.network.ClientInfoPayloads;
 import vai.hbtweaks.context.client.network.EffectPayloads;
 import vai.hbtweaks.context.client.network.MessagePayloads;
 import vai.hbtweaks.context.client.mouse.MouseTracker;
@@ -53,10 +55,14 @@ public class HBTweaksContextClient implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(lookAtInfoBox);
 		lookAtInfoBox.register();
 
-		ClientPlayConnectionEvents.DISCONNECT.register((_, _) -> Util.clearCaches());
+		ClientPlayConnectionEvents.DISCONNECT.register((_, _) -> {
+			Util.clearCaches();
+			ClientInfoBank.clear();
+		});
 
 		MessagePayloads.init();
 		EffectPayloads.init();
+		ClientInfoPayloads.init();
 		WritingStatusSender.init();
 		ScriptRunner.init();
 		GiveItemToPlayerPayloads.init();

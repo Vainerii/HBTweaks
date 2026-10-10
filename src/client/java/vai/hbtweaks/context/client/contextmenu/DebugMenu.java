@@ -28,7 +28,11 @@ import net.minecraft.world.scores.PlayerTeam;
 import vai.hbtweaks.context.HBTweaksContext;
 import vai.hbtweaks.context.client.HitboxDebug;
 import vai.hbtweaks.context.client.Util;
+import fr.herobrine.network.client.ClientInformation;
+import fr.herobrine.network.client.ClientProperty;
+import vai.hbtweaks.context.client.clientinfo.ClientInfoBank;
 import vai.hbtweaks.context.client.effects.EffectsBank;
+import vai.hbtweaks.context.client.network.ClientInfoPayloads;
 import vai.hbtweaks.context.client.keyboard.WritersBank;
 import vai.hbtweaks.context.client.listeners.ContextMenuTrigger;
 import vai.hbtweaks.context.client.mouse.MouseTracker;
@@ -83,6 +87,7 @@ public final class DebugMenu {
         menu.addSubmenuItem("Pos", position(player));
         menu.addSubmenuItem("Data", state(player, pi));
         menu.addSubmenuItem("Banks", banks(player));
+        menu.addSubmenuItem("ClientInfo", clientInfo(player));
         menu.addSubmenuItem("Hovered", hovered(player));
         //menu.addSubmenuItem("Permissions", permissions(player));
         if (pi != null)
@@ -158,6 +163,31 @@ public final class DebugMenu {
         for (MobEffectInstance eff : EffectsBank.get(uuid))
             row(m, "  " + eff.getEffect().value().getDisplayName().getString(),
                     " " + eff.getAmplifier() + " / " + eff.getDuration() + "t");
+        return m;
+    }
+
+    private static ContextMenu clientInfo(Player player) {
+        ContextMenu m = new ContextMenu(0, 0, player);
+        if (!ClientInfoPayloads.canRequest()) {
+            m.addInfoItem(Component.literal("[unsupported]").withStyle(ChatFormatting.DARK_GRAY));
+            return m;
+        }
+
+        UUID uuid = player.getUUID();
+        m.addActionItem(Component.literal("Request update").withStyle(ChatFormatting.AQUA),
+                () -> ClientInfoPayloads.request(uuid));
+
+        ClientInformation info = ClientInfoBank.get(uuid);
+        if (info == null) {
+            m.addInfoItem(Component.literal("[no data]").withStyle(ChatFormatting.DARK_GRAY));
+            return m;
+        }
+        if (info.getProperties().isEmpty()) {
+            m.addInfoItem(Component.literal("[no properties]").withStyle(ChatFormatting.DARK_GRAY));
+            return m;
+        }
+        for (Map.Entry<ClientProperty<?>, Object> e : info.getProperties().entrySet())
+            row(m, e.getKey().id().toString(), String.valueOf(e.getValue()));
         return m;
     }
 
