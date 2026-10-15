@@ -15,7 +15,7 @@ public class SendMessageTrigger implements MouseTrackerEntityClickUpCallback {
     @Override
     public void onClickUp(List<Entity> list, ClickType clickType, ScreenType screenType) {
         if (screenType == ScreenType.CHAT && clickType == ClickType.MIDDLE_CLICK && !list.isEmpty()) {
-            ChatScreen cs = (ChatScreen) Minecraft.getInstance().screen;
+            ChatScreen cs = (ChatScreen) Minecraft.getInstance().gui.screen();
             Entity target = list.getFirst();
             if (target instanceof Player) {
                 ((ChatScreenAccessor) cs).getInput().insertText(target.getName().getString());

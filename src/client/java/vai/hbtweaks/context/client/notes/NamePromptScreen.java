@@ -61,7 +61,7 @@ public class NamePromptScreen extends Screen {
         String name = this.field.getText().trim();
         if (name.isEmpty()) return;
         this.onConfirm.accept(name);
-        this.minecraft.setScreen(this.parent);
+        this.minecraft.gui.setScreen(this.parent);
     }
 
     @Override
@@ -81,7 +81,7 @@ public class NamePromptScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.setScreen(this.parent);
+        this.minecraft.gui.setScreen(this.parent);
     }
 
     @Override

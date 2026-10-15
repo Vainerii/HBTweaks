@@ -20,7 +20,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
+import org.lwjgl.sdl.SDLMouse;
 import vai.hbtweaks.context.HBTweaksContext;
 import vai.hbtweaks.context.client.contextmenu.ContextMenu;
 import vai.hbtweaks.context.client.contextmenu.DebugMenu;
@@ -88,10 +88,10 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         MenuLocation.DeleteRef ref = contextMenu.getHoveredDeletable(mx, my);
         if (ref == null)
             return false;
-        Screen parent = mc.screen;
+        Screen parent = mc.gui.screen();
         contextMenu.close();
         contextMenu = null;
-        mc.setScreen(new DeleteConfirmScreen(parent, ref));
+        mc.gui.setScreen(new DeleteConfirmScreen(parent, ref));
         return true;
     }
 
@@ -191,7 +191,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
         context.addActionItem(Component.translatable("hbtweaks.context.notes.title"), () -> {
             Minecraft mc = Minecraft.getInstance();
-            mc.setScreen(new NotesScreen(mc.screen));
+            mc.gui.setScreen(new NotesScreen(mc.gui.screen()));
         });
 
         if (hasPerm()) {
@@ -372,14 +372,14 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
     public static void requestDelete(MenuLocation.DeleteRef ref) {
         Minecraft mc = Minecraft.getInstance();
-        Screen parent = mc.screen;
+        Screen parent = mc.gui.screen();
         dispose();
-        mc.setScreen(new DeleteConfirmScreen(parent, ref));
+        mc.gui.setScreen(new DeleteConfirmScreen(parent, ref));
     }
 
     public static void requestEdit(MenuLocation.DeleteRef ref) {
         Minecraft mc = Minecraft.getInstance();
-        Screen parent = mc.screen;
+        Screen parent = mc.gui.screen();
         Map<String, Object> entry = ref.container().entryAt(ref.index());
         if (entry == null) return;
         String label = String.valueOf(entry.getOrDefault("label", ""));
@@ -389,11 +389,11 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
             List<String> lines = new java.util.ArrayList<>();
             for (Object o : list)
                 lines.add(String.valueOf(o));
-            mc.setScreen(new AddScriptScreen(parent, ref.container(), ref.index(), label, lines));
+            mc.gui.setScreen(new AddScriptScreen(parent, ref.container(), ref.index(), label, lines));
         } else if (cmd != null) {
-            mc.setScreen(new AddCommandScreen(parent, ref.container(), ref.index(), label, String.valueOf(cmd)));
+            mc.gui.setScreen(new AddCommandScreen(parent, ref.container(), ref.index(), label, String.valueOf(cmd)));
         } else if (entry.containsKey("submenu")) {
-            mc.setScreen(new AddSubmenuScreen(parent, ref.container(), ref.index(), label));
+            mc.gui.setScreen(new AddSubmenuScreen(parent, ref.container(), ref.index(), label));
         }
     }
 
@@ -408,7 +408,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
     private static boolean isMouseOverChat() {
         Minecraft mc = Minecraft.getInstance();
-        if (!(mc.screen instanceof ChatScreen)) return false;
+        if (!(mc.gui.screen() instanceof ChatScreen)) return false;
         double scale = mc.options.chatScale().get();
         if (scale <= 0) return false;
         int width = ChatComponent.getWidth(mc.options.chatWidth().get());
@@ -433,8 +433,8 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
     private static void render(GuiGraphicsExtractor graphics, DeltaTracker tickDelta) {
         try {
-            boolean leftDown = hasPerm() && GLFW.glfwGetMouseButton(
-                    Minecraft.getInstance().getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+            boolean leftDown = hasPerm()
+                    && (SDLMouse.SDL_GetMouseState(null, null) & SDLMouse.SDL_BUTTON_LMASK) != 0;
             if (!leftDown) effectsRequestedFor = null;
 
             if (contextMenu != null
@@ -454,7 +454,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     }
 
     private static void renderHoverName(GuiGraphicsExtractor graphics, boolean leftDown) {
-        if (Minecraft.getInstance().options.hideGui) return;
+        if (Minecraft.getInstance().gui.hud.isHidden()) return;
         if (isMouseOverChat()) return;
         Player target = firstVisiblePlayer(MouseTracker.getHoveredEntities());
         if (target == null) return;

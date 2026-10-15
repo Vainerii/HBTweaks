@@ -37,7 +37,7 @@ public class Util {
     public static MutableComponent writingIndicator(Player target) {
         MutableComponent out = Component.empty();
         boolean writing = WritersBank.isWriting(target);
-        int subtick = Minecraft.getInstance().gui.getGuiTicks() % 32;
+        int subtick = Minecraft.getInstance().gui.hud.getGuiTicks() % 32;
         for (int i = 1; i <= 3; i++) {
             int v = 0x30;
             if (writing) {

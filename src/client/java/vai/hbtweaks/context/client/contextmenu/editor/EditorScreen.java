@@ -44,12 +44,12 @@ abstract class EditorScreen extends SpruceScreen {
     protected abstract void build(SpruceContainerWidget panel);
 
     protected void done() {
-        this.minecraft.setScreen(this.parent);
+        this.minecraft.gui.setScreen(this.parent);
     }
 
     @Override
     public void onClose() {
-        this.minecraft.setScreen(this.parent);
+        this.minecraft.gui.setScreen(this.parent);
     }
 
     @Override

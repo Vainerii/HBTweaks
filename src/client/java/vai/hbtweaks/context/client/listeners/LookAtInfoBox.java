@@ -52,7 +52,7 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
         // two raycasts never land on the same tick. Slower rate is enough when cursor doesnt move.
         int interval = client.mouseHandler.isMouseGrabbed() ? 2 : 6;
         try {
-            if (Math.floorMod(client.gui.getGuiTicks(), interval) == 0)
+            if (Math.floorMod(client.gui.hud.getGuiTicks(), interval) == 0)
                 updateTarget(client);
             refresh(client);
         } catch (Exception ignored) { }

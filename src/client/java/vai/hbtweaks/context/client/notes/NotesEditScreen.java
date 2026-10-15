@@ -91,7 +91,7 @@ public class NotesEditScreen extends Screen {
 
         addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> {
             saveChanges();
-            this.minecraft.setScreen(this.parent);
+            this.minecraft.gui.setScreen(this.parent);
         }).pos(this.width / 2 - 49, menuControlsTop()).width(98).build());
 
         updateButtonVisibility();
@@ -151,7 +151,7 @@ public class NotesEditScreen extends Screen {
     @Override
     public void onClose() {
         saveChanges();
-        this.minecraft.setScreen(this.parent);
+        this.minecraft.gui.setScreen(this.parent);
     }
 
     @Override

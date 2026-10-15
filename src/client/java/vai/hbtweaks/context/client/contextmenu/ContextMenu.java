@@ -8,7 +8,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.Util;
+import com.mojang.blaze3d.Blaze3D;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -126,15 +126,15 @@ public class ContextMenu {
         ContextMenu sub = new ContextMenu(0, 0, this.player);
         sub.addActionItem(Component.translatable("hbtweaks.context.editor.add_submenu"), () -> {
             Minecraft mc = Minecraft.getInstance();
-            mc.setScreen(new AddSubmenuScreen(mc.screen, container));
+            mc.gui.setScreen(new AddSubmenuScreen(mc.gui.screen(), container));
         });
         sub.addActionItem(Component.translatable("hbtweaks.context.editor.add_command"), () -> {
             Minecraft mc = Minecraft.getInstance();
-            mc.setScreen(new AddCommandScreen(mc.screen, container));
+            mc.gui.setScreen(new AddCommandScreen(mc.gui.screen(), container));
         });
         sub.addActionItem(Component.translatable("hbtweaks.context.editor.add_script"), () -> {
             Minecraft mc = Minecraft.getInstance();
-            mc.setScreen(new AddScriptScreen(mc.screen, container));
+            mc.gui.setScreen(new AddScriptScreen(mc.gui.screen(), container));
         });
         return push(new AddMenuItem(
                 Component.translatable("hbtweaks.context.editor.add").withStyle(ChatFormatting.GREEN), sub));
@@ -456,7 +456,7 @@ public class ContextMenu {
                 components.add(ClientTooltipComponent.create(line.getVisualOrderText()));
             }
             hoveredStack.getTooltipImage().ifPresent(image -> components.add(1, ClientTooltipComponent.create(image)));
-            graphics.tooltip(mc.font, components, mouseX, mouseY, DefaultTooltipPositioner.INSTANCE, null);
+            graphics.tooltip(mc.font, components, mouseX, mouseY, DefaultTooltipPositioner.INSTANCE, null, false);
         }
 
         if (this.openSubmenu != null) {
@@ -872,7 +872,7 @@ public class ContextMenu {
 
             boolean needsPos = this.command.contains("%blockpos%") || this.command.contains("%eyepos%");
             if (needsPos && (mc.level == null || mc.level.getPlayerByUUID(playerUUID) == null)) {
-                mc.gui.getChat().addClientSystemMessage(
+                mc.gui.hud.getChat().addClientSystemMessage(
                         Component.literal("Le joueur est trop loin pour exécuter cette commande.").withStyle(ChatFormatting.RED));
                 return;
             }
@@ -1126,7 +1126,7 @@ public class ContextMenu {
         @Override
         public void onClick() {
             try {
-                Util.getPlatform().openUri(new java.net.URI(this.url));
+                Blaze3D.openUri(new java.net.URI(this.url));
             } catch (java.net.URISyntaxException e) {
                 HBTweaksContext.LOGGER.error("Invalid URL: {}", this.url, e);
             }

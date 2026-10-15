@@ -318,7 +318,7 @@ public final class DebugMenu {
         } catch (Exception ex) {
             HBTweaksContext.LOGGER.error("Failed to find NBT", ex);
         }
-        Minecraft.getInstance().gui.getChat().addClientSystemMessage(Component.literal("NBT printed in logs"));
+        Minecraft.getInstance().gui.hud.getChat().addClientSystemMessage(Component.literal("NBT printed in logs"));
     }
 
     private static ContextMenu players(Player self) {
@@ -383,7 +383,7 @@ public final class DebugMenu {
             return;
         }
 
-        mc.gui.getChat().addClientSystemMessage(Component.literal(
+        mc.gui.hud.getChat().addClientSystemMessage(Component.literal(
                 written + " entities dumped into " + dir).withStyle(ChatFormatting.GREEN));
     }
 
@@ -408,7 +408,7 @@ public final class DebugMenu {
                 CustomContextMenuLoader.readYaml(ContextMenuTrigger.CUSTOM_MENU));
         ContextMenuTrigger.onFileEdited(ContextMenuTrigger.CUSTOM_MENU_SELF,
                 CustomContextMenuLoader.readYaml(ContextMenuTrigger.CUSTOM_MENU_SELF));
-        Minecraft.getInstance().gui.getChat().addClientSystemMessage(
+        Minecraft.getInstance().gui.hud.getChat().addClientSystemMessage(
                 Component.literal("Reloaded"));
     }
 

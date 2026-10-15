@@ -23,7 +23,7 @@ public final class NotesMenu {
             @Override
             public void edit() {
                 Minecraft mc = Minecraft.getInstance();
-                mc.setScreen(new NotesEditScreen(mc.screen, key, NotesBank.get(key)));
+                mc.gui.setScreen(new NotesEditScreen(mc.gui.screen(), key, NotesBank.get(key)));
             }
         };
 

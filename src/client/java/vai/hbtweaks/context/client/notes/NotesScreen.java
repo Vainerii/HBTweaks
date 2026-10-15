@@ -163,7 +163,7 @@ public class NotesScreen extends Screen {
     }
 
     private void promptNew() {
-        this.minecraft.setScreen(new NamePromptScreen(this,
+        this.minecraft.gui.setScreen(new NamePromptScreen(this,
                 Component.translatable("hbtweaks.context.notes.new"), "", name -> {
             if (!NotesBank.has(name))
                 NotesBank.set(name, List.of(""));
@@ -176,7 +176,7 @@ public class NotesScreen extends Screen {
     private void promptRename() {
         if (this.selected == null) return;
         String from = this.selected;
-        this.minecraft.setScreen(new NamePromptScreen(this,
+        this.minecraft.gui.setScreen(new NamePromptScreen(this,
                 Component.translatable("hbtweaks.context.notes.rename"), from, name -> {
             NotesBank.rename(from, name);
             this.selected = name;
@@ -187,7 +187,7 @@ public class NotesScreen extends Screen {
     private void promptDuplicate() {
         if (this.selected == null) return;
         String from = this.selected;
-        this.minecraft.setScreen(new NamePromptScreen(this,
+        this.minecraft.gui.setScreen(new NamePromptScreen(this,
                 Component.translatable("hbtweaks.context.notes.duplicate"), from + " (2)", name -> {
             NotesBank.duplicate(from, name);
             this.selected = name;
@@ -197,18 +197,18 @@ public class NotesScreen extends Screen {
 
     private void edit() {
         if (this.selected == null) return;
-        this.minecraft.setScreen(new NotesEditScreen(this, this.selected, NotesBank.get(this.selected)));
+        this.minecraft.gui.setScreen(new NotesEditScreen(this, this.selected, NotesBank.get(this.selected)));
     }
 
     private void promptDelete() {
         if (this.selected == null) return;
         String key = this.selected;
-        this.minecraft.setScreen(new ConfirmScreen(ok -> {
+        this.minecraft.gui.setScreen(new ConfirmScreen(ok -> {
             if (ok) {
                 NotesBank.delete(key);
                 this.selected = null;
             }
-            this.minecraft.setScreen(this);
+            this.minecraft.gui.setScreen(this);
             refresh();
         },
                 Component.translatable("hbtweaks.context.notes.delete"),
@@ -263,7 +263,7 @@ public class NotesScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.setScreen(this.parent);
+        this.minecraft.gui.setScreen(this.parent);
     }
 
     @Override

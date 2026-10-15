@@ -13,7 +13,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.joml.Vector3fc;
-import org.lwjgl.glfw.GLFW;
+import org.lwjgl.sdl.SDLMouse;
 import vai.hbtweaks.context.client.Util;
 
 import java.util.ArrayList;
@@ -46,7 +46,7 @@ public class MouseTracker implements ClientTickEvents.EndTick {
         Entity ce = mc.getCameraEntity();
         if (ce == null) return List.of();
 
-        Vec3 origin = mc.gameRenderer.getMainCamera().position();
+        Vec3 origin = mc.gameRenderer.mainCamera().position();
         Vec3 end = origin.add(rayDirection.normalize().scale(Util.rayLength()));
         AABB searchBox = new AABB(origin, end).inflate(1.0D);
 
@@ -94,7 +94,7 @@ public class MouseTracker implements ClientTickEvents.EndTick {
 
     private Vec3 pixelRayCast() {
         Minecraft mc = Minecraft.getInstance();
-        Camera camera = mc.gameRenderer.getMainCamera();
+        Camera camera = mc.gameRenderer.mainCamera();
         if (!camera.isInitialized())
             return null;
 
@@ -145,18 +145,19 @@ public class MouseTracker implements ClientTickEvents.EndTick {
             return;
         }
 
-        ScreenType screenType = ScreenType.fromScreen(minecraft.screen);
+        ScreenType screenType = ScreenType.fromScreen(minecraft.gui.screen());
 
-        if (Math.floorMod(minecraft.gui.getGuiTicks(), 2) == 1) {
+        if (Math.floorMod(minecraft.gui.hud.getGuiTicks(), 2) == 1) {
             Vec3 pixelRay = this.pixelRayCast();
             hoveredEntities = pixelRay == null ? List.of() : this.getRayCastedEntities(pixelRay);
         }
         List<Entity> detectedEntities = hoveredEntities;
 
-        long windowHandle = minecraft.getWindow().handle();
-        boolean left = GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
-        boolean middle = GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
-        boolean right = GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
+        // MouseHandler.isLeftPressed() only updates without a screen, but we need it in chat/cursor screens.
+        int buttons = SDLMouse.SDL_GetMouseState(null, null);
+        boolean left = (buttons & SDLMouse.SDL_BUTTON_LMASK) != 0;
+        boolean middle = (buttons & SDLMouse.SDL_BUTTON_MMASK) != 0;
+        boolean right = (buttons & SDLMouse.SDL_BUTTON_RMASK) != 0;
 
         if (this.leftDown && !left)
             MouseTrackerEntityClickUpCallback.EVENT.invoker()
