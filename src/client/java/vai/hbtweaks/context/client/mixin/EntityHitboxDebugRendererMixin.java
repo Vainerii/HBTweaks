@@ -5,12 +5,16 @@ import net.minecraft.gizmos.GizmoProperties;
 import net.minecraft.gizmos.GizmoStyle;
 import net.minecraft.gizmos.Gizmos;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import vai.hbtweaks.context.client.HitboxDebug;
+import vai.hbtweaks.context.client.LyingBody;
 
 @Mixin(EntityHitboxDebugRenderer.class)
 public class EntityHitboxDebugRendererMixin {
@@ -37,5 +41,16 @@ public class EntityHitboxDebugRendererMixin {
     @Redirect(method = "showHitboxes", at = @At(value = "INVOKE", target = "Lnet/minecraft/gizmos/Gizmos;arrow(Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;I)Lnet/minecraft/gizmos/GizmoProperties;"))
     private GizmoProperties hbtweaks$arrowOnTop(Vec3 start, Vec3 end, int argb) {
         return hbtweaks$onTop(Gizmos.arrow(start, end, argb));
+    }
+
+    /** Fake hitbox for collisions */
+    @Inject(method = "showHitboxes", at = @At("TAIL"))
+    private void hbtweaks$showLyingBody(Entity entity, float partialTicks, boolean isServerEntity, CallbackInfo ci) {
+        if (!(entity instanceof Player body) || !LyingBody.isLying(body)) return;
+        Vec3[] c = LyingBody.corners(body);
+        for (int i = 0; i < 8; i++)
+            for (int bit = 1; bit < 8; bit <<= 1)
+                if ((i & bit) == 0)
+                    hbtweaks$onTop(Gizmos.line(c[i], c[i | bit], 0xFF00FFFF));
     }
 }

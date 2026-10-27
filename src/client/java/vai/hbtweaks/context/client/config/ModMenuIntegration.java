@@ -27,6 +27,13 @@ public class ModMenuIntegration implements ModMenuApi {
     private static final Component o_menu_style = Component.translatable("hbtweaks.context.config.menu_style");
     private static final Component o_menu_style_tt = Component.translatable("hbtweaks.context.config.menu_style.tooltip");
 
+    private static final Component o_lay = Component.translatable("hbtweaks.context.config.lay_assist");
+    private static final Component o_lay_tt = Component.translatable("hbtweaks.context.config.lay_assist.tooltip");
+
+    private static final Component v_lay_off = Component.translatable("hbtweaks.context.config.lay_assist.off");
+    private static final Component v_lay_toggle = Component.translatable("hbtweaks.context.config.lay_assist.sneak_toggle");
+    private static final Component v_lay_hold = Component.translatable("hbtweaks.context.config.lay_assist.sneak_hold");
+
     private static final Component v_style_normal = Component.translatable("hbtweaks.context.config.menu_style.normal");
     private static final Component v_style_minimal = Component.translatable("hbtweaks.context.config.menu_style.minimal");
 
@@ -34,6 +41,7 @@ public class ModMenuIntegration implements ModMenuApi {
     private static final Component v_top_right = Component.translatable("hbtweaks.context.config.pos.top_right");
     private static final Component v_bottom_right = Component.translatable("hbtweaks.context.config.pos.bottom_right");
     private static final Component v_mouse = Component.translatable("hbtweaks.context.config.pos.mouse");
+    private static final Component v_disabled = Component.translatable("hbtweaks.context.config.pos.disabled");
 
     @Override
     public ConfigScreenFactory<?> getModConfigScreenFactory() {
@@ -82,6 +90,14 @@ public class ModMenuIntegration implements ModMenuApi {
                                 .enumClass(HBConfig.MenuStyle.class)
                                 .formatValue(ModMenuIntegration::menuStyleLabel))
                         .build())
+                .option(Option.<HBConfig.LayAssistMode>createBuilder()
+                        .name(o_lay)
+                        .description(OptionDescription.of(o_lay_tt))
+                        .binding(def.layAssist, () -> cfg.layAssist, v -> cfg.layAssist = v)
+                        .controller(opt -> EnumControllerBuilder.create(opt)
+                                .enumClass(HBConfig.LayAssistMode.class)
+                                .formatValue(ModMenuIntegration::layAssistLabel))
+                        .build())
                 .build();
 
         YetAnotherConfigLib yacl = YetAnotherConfigLib.createBuilder()
@@ -99,6 +115,7 @@ public class ModMenuIntegration implements ModMenuApi {
             case TOP_RIGHT -> v_top_right;
             case BOTTOM_RIGHT -> v_bottom_right;
             case MOUSE -> v_mouse;
+            case DISABLED -> v_disabled;
         };
     }
 
@@ -109,11 +126,20 @@ public class ModMenuIntegration implements ModMenuApi {
         };
     }
 
+    private static Component layAssistLabel(HBConfig.LayAssistMode mode) {
+        return switch (mode) {
+            case OFF -> v_lay_off;
+            case SNEAK_TOGGLE -> v_lay_toggle;
+            case SNEAK_HOLD -> v_lay_hold;
+        };
+    }
+
     private static Component boxLabel(HBConfig.BoxPosition pos) {
         return switch (pos) {
             case TOP_LEFT -> v_top_left;
             case TOP_RIGHT -> v_top_right;
             case BOTTOM_RIGHT -> v_bottom_right;
+            case DISABLED -> v_disabled;
         };
     }
 }

@@ -51,6 +51,10 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
         // Both intervals are even, and MouseTracker only runs on odd gui ticks, so the
         // two raycasts never land on the same tick. Slower rate is enough when cursor doesnt move.
         int interval = client.mouseHandler.isMouseGrabbed() ? 2 : 6;
+        if (HBConfig.get().boxPosition == HBConfig.BoxPosition.DISABLED) {
+            clear();
+            return;
+        }
         try {
             if (Math.floorMod(client.gui.getGuiTicks(), interval) == 0)
                 updateTarget(client);
@@ -147,12 +151,12 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
         int screenH = mc.getWindow().getGuiScaledHeight();
 
         int boxX = switch (HBConfig.get().boxPosition) {
-            case TOP_LEFT -> MARGIN;
             case TOP_RIGHT, BOTTOM_RIGHT -> screenW - boxW - MARGIN;
+            default -> MARGIN;
         };
         int boxY = switch (HBConfig.get().boxPosition) {
-            case TOP_LEFT, TOP_RIGHT -> MARGIN;
             case BOTTOM_RIGHT -> screenH - boxH - MARGIN;
+            default -> MARGIN;
         };
 
         int textX = boxX + 2;

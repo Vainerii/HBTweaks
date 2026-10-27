@@ -11,11 +11,13 @@ import java.util.List;
 
 public class HBConfig {
 
-    public enum HoverLocation { TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT, MOUSE }
+    public enum HoverLocation { TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT, MOUSE, DISABLED }
 
-    public enum BoxPosition { TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT }
+    public enum BoxPosition { TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT, DISABLED }
 
     public enum MenuStyle { NORMAL, MINIMAL }
+
+    public enum LayAssistMode { OFF, SNEAK_TOGGLE, SNEAK_HOLD }
 
     public static final ConfigClassHandler<HBConfig> HANDLER =
             ConfigClassHandler.createBuilder(HBConfig.class)
@@ -36,6 +38,7 @@ public class HBConfig {
     @SerialEntry public boolean hidePlusBox = false;
     @SerialEntry public MenuStyle menuStyle = MenuStyle.NORMAL;
     @SerialEntry public boolean shareTyping = true;
+    @SerialEntry public LayAssistMode layAssist = LayAssistMode.SNEAK_TOGGLE;
     @SerialEntry public List<String> hiddenMenus = new ArrayList<>();
     //@SerialEntry public boolean showMyName = true;
 }

@@ -33,6 +33,7 @@ import vai.hbtweaks.context.client.contextmenu.editor.AddSubmenuScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.DeleteConfirmScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
 import vai.hbtweaks.context.client.keyboard.WritingStatusSender;
+import vai.hbtweaks.context.client.LyingBody;
 import vai.hbtweaks.context.client.PlayerOutline;
 import vai.hbtweaks.context.client.Util;
 import vai.hbtweaks.context.client.WorldTint;
@@ -267,7 +268,14 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
     private static Player firstVisiblePlayer(List<Entity> entities) {
         for (Entity e : entities) {
-            if (e instanceof Player p && !p.isInvisible())
+            if (!(e instanceof Player p)) continue;
+            // A /lay body have an invisible real player at its position
+            if (LyingBody.isLying(p)) {
+                Player owner = LyingBody.owner(p);
+                if (owner == null) return p;
+                return owner == Minecraft.getInstance().player ? null : owner;
+            }
+            if (!p.isInvisible())
                 return p;
         }
         return null;
@@ -285,7 +293,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
             try {
                 Player targetPlayer = firstVisiblePlayer(list);
-                if (targetPlayer == null) {
+                if (targetPlayer == null || !isReal(targetPlayer)) {
                     rebuilder = () -> {
                         if (ContextMenuTrigger.contextMenu != null)
                             ContextMenuTrigger.contextMenu.close();
@@ -295,7 +303,6 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
                     rebuilder.run();
                     return;
                 }
-                if (!isReal(targetPlayer)) return;
                 openForPlayer(targetPlayer, x, y);
             } catch (Exception e) {
                 HBTweaksContext.LOGGER.error("Failed to open context menu", e);
@@ -325,7 +332,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
                 addSubmenuIfPresent("Reput", makeReputContextMenu(targetPlayer));
             if (isCommandAvailable("avisok"))
                 addSubmenuIfPresent("Avis", makeAvisContextMenu(targetPlayer));
-            if (GiveItemToPlayerPayloads.canGive())
+            if (loaded && GiveItemToPlayerPayloads.canGive() && GiveItemToPlayerPayloads.inRange(targetPlayer))
                 ContextMenuTrigger.contextMenu.addActionItem(
                         Component.translatable("hbtweaks.context.giveitem"),
                         () -> GiveItemToPlayerPayloads.giveToPlayer(targetPlayer.getUUID()));
@@ -455,6 +462,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
     private static void renderHoverName(GuiGraphicsExtractor graphics, boolean leftDown) {
         if (Minecraft.getInstance().options.hideGui) return;
+        if (HBConfig.get().hoverLocation == HBConfig.HoverLocation.DISABLED) return;
         if (isMouseOverChat()) return;
         Player target = firstVisiblePlayer(MouseTracker.getHoveredEntities());
         if (target == null) return;

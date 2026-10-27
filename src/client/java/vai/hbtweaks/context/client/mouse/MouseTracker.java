@@ -14,6 +14,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.joml.Vector3fc;
 import org.lwjgl.glfw.GLFW;
+import vai.hbtweaks.context.client.LyingBody;
 import vai.hbtweaks.context.client.Util;
 
 import java.util.ArrayList;
@@ -48,11 +49,16 @@ public class MouseTracker implements ClientTickEvents.EndTick {
 
         Vec3 origin = mc.gameRenderer.getMainCamera().position();
         Vec3 end = origin.add(rayDirection.normalize().scale(Util.rayLength()));
-        AABB searchBox = new AABB(origin, end).inflate(1.0D);
+        // no computed height, because it's not that important
+        AABB searchBox = new AABB(origin, end).inflate(2.0D);
 
         this.hits.clear();
         for (Entity e : ce.level().getEntities(ce, searchBox,
-                en -> Util.hasDev() || (en instanceof Player p && Util.isReal(p)))) {
+                en -> Util.hasDev() || en instanceof Player)) {
+            if (e instanceof Player body && LyingBody.isLying(body)) {
+                LyingBody.clip(body, origin, end).ifPresent(p -> this.hits.add(new Hit(origin.distanceToSqr(p), p, body)));
+                continue;
+            }
             AABB ebb = e.getBoundingBox().inflate(e.getPickRadius());
             if (ebb.contains(origin)) {
                 this.hits.add(new Hit(0D, origin, e));

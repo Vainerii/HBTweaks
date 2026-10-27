@@ -68,6 +68,7 @@ public class HBTweaksContextClient implements ClientModInitializer {
 		GiveItemToPlayerPayloads.init();
 
 		MouseTracker.register();
+		LayAssist.register();
 		MouseTrackerEntityClickUpCallback.EVENT.register(cmt);
 		MouseTrackerEntityClickUpCallback.EVENT.register(smt);
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {

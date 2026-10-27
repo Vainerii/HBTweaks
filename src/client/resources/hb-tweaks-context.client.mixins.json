@@ -3,11 +3,15 @@
 	"package": "vai.hbtweaks.context.client.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
+		"CameraLayMixin",
 		"ChatScreenAccessor",
 		"ChatScreenMixin",
+		"ClientPacketListenerTeamMixin",
 		"EntityHitboxDebugRendererMixin",
 		"EnvironmentAttributeProbeMixin",
-		"MinecraftGlowingMixin"
+		"KeyboardInputLayMixin",
+		"MinecraftGlowingMixin",
+		"MouseHandlerLayMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

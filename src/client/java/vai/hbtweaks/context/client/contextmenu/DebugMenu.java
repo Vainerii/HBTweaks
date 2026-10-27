@@ -21,12 +21,14 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.scores.PlayerTeam;
 import vai.hbtweaks.context.HBTweaksContext;
 import vai.hbtweaks.context.client.HitboxDebug;
+import vai.hbtweaks.context.client.LyingBody;
 import vai.hbtweaks.context.client.Util;
 import fr.herobrine.network.client.ClientInformation;
 import fr.herobrine.network.client.ClientProperty;
@@ -293,6 +295,13 @@ public final class DebugMenu {
         row(m, "Name", e.getName().getString());
         fillPosition(m, e);
         row(m, "Rotation", "yaw %.1f / pitch %.1f".formatted(e.getYRot(), e.getXRot()));
+        if (e instanceof LivingEntity living)
+            row(m, "Head / Body", "%.1f / %.1f".formatted(living.getYHeadRot(), living.yBodyRot));
+        row(m, "Pose", e.getPose().name());
+        if (e instanceof Player body && LyingBody.isLying(body)) {
+            Player lyingOwner = LyingBody.owner(body);
+            row(m, "Lying owner", lyingOwner == null ? null : lyingOwner.getName().getString());
+        }
         AABB bb = e.getBoundingBox();
         row(m, "Size X", "%.2f".formatted(bb.getXsize()));
         row(m, "Size Y", "%.2f".formatted(bb.getYsize()));
