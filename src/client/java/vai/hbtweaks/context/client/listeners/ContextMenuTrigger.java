@@ -80,22 +80,6 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
             customMenuSelf = root;
     }
 
-    public static boolean handleDelete() {
-        if (!ContextMenu.EDIT_ENABLED || !ContextMenu.editMode || contextMenu == null || !contextMenu.isVisible())
-            return false;
-        Minecraft mc = Minecraft.getInstance();
-        int mx = (int) mc.mouseHandler.getScaledXPos(mc.getWindow());
-        int my = (int) mc.mouseHandler.getScaledYPos(mc.getWindow());
-        MenuLocation.DeleteRef ref = contextMenu.getHoveredDeletable(mx, my);
-        if (ref == null)
-            return false;
-        Screen parent = mc.screen;
-        contextMenu.close();
-        contextMenu = null;
-        mc.setScreen(new DeleteConfirmScreen(parent, ref));
-        return true;
-    }
-
     private boolean isCommandAvailable(String command) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return false;

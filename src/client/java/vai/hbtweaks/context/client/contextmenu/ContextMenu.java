@@ -22,6 +22,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import vai.hbtweaks.context.HBTweaksContext;
 import vai.hbtweaks.context.client.config.HBConfig;
+import vai.hbtweaks.context.client.config.ModMenuIntegration;
 import vai.hbtweaks.context.client.contextmenu.editor.AddCommandScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.AddScriptScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.AddSubmenuScreen;
@@ -203,6 +204,21 @@ public class ContextMenu {
 
     private boolean isInsideToggle(int mx, int my) {
         int sx = toggleX();
+        int sy = toggleY();
+        return mx >= sx && mx < sx + TOGGLE_SIZE && my >= sy && my < sy + TOGGLE_SIZE;
+    }
+
+    // Settings square, bottom right, only while editing.
+    private boolean hasSettingsButton() {
+        return this.hasEditToggle && editMode;
+    }
+
+    private int settingsX() {
+        return this.x + this.width - TOGGLE_SIZE - 1;
+    }
+
+    private boolean isInsideSettings(int mx, int my) {
+        int sx = settingsX();
         int sy = toggleY();
         return mx >= sx && mx < sx + TOGGLE_SIZE && my >= sy && my < sy + TOGGLE_SIZE;
     }
@@ -434,6 +450,16 @@ public class ContextMenu {
                     tHover ? ContextMenu.COLOR_TEXT_HOVER : ContextMenu.COLOR_TEXT, false);
         }
 
+        if (hasSettingsButton()) {
+            int sx = settingsX();
+            int sy = toggleY();
+            boolean sHover = isInsideSettings(mouseX, mouseY);
+            graphics.fill(sx - 1, sy - 1, sx + TOGGLE_SIZE + 1, sy + TOGGLE_SIZE + 1, ContextMenu.COLOR_BORDER);
+            graphics.fill(sx, sy, sx + TOGGLE_SIZE, sy + TOGGLE_SIZE, sHover ? ContextMenu.COLOR_HOVER : ContextMenu.COLOR_TOGGLE_BG);
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, ICON_SETTINGS, sx + 1, sy + 1, TOGGLE_SIZE - 2, TOGGLE_SIZE - 2,
+                    sHover ? ContextMenu.COLOR_TEXT_HOVER : ContextMenu.COLOR_TEXT);
+        }
+
         if (nextSubmenu != null) {
             if (this.openSubmenu != nextSubmenu) {
                 if (this.openSubmenu != null)
@@ -480,6 +506,12 @@ public class ContextMenu {
             editMode = !editMode;
             ContextMenuTrigger.rebuildAfterEdit();
             return false;
+        }
+
+        if (hasSettingsButton() && isInsideSettings(mx, my)) {
+            Minecraft mc = Minecraft.getInstance();
+            mc.setScreen(ModMenuIntegration.createConfigScreen(mc.screen));
+            return true;
         }
 
         if (handleEditClick(mx, my))
@@ -551,22 +583,6 @@ public class ContextMenu {
                 return true;
         }
         return false;
-    }
-
-    public MenuLocation.DeleteRef getHoveredDeletable(int mx, int my) {
-        if (!this.visible)
-            return null;
-        if (this.openSubmenu != null) {
-            MenuLocation.DeleteRef r = this.openSubmenu.getHoveredDeletable(mx, my);
-            if (r != null)
-                return r;
-        }
-        int itemCount = effectiveItemCount();
-        for (int i = 0; i < itemCount; i++) {
-            if (isInsideRow(mx, my, this.y + i * itemHeight()))
-                return this.itemDelete.get(i);
-        }
-        return null;
     }
 
     private boolean isInsideRow(int mx, int my, int rowY) {
@@ -712,6 +728,7 @@ public class ContextMenu {
     private static final Identifier ICON_LEFT = icon("left_arrow");
     private static final Identifier ICON_VISIBLE = icon("visible");
     private static final Identifier ICON_HIDDEN = icon("hidden");
+    private static final Identifier ICON_SETTINGS = icon("settings");
 
     private void drawSubmenuArrow(GuiGraphicsExtractor graphics, int itemY, boolean besideCluster) {
         int size = Math.min(itemHeight() - 4, 7);

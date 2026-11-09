@@ -35,7 +35,6 @@ public class MouseTracker implements ClientTickEvents.EndTick {
     private final List<Hit> hits = new ArrayList<>();
 
     private boolean leftDown = false;
-    private boolean middleDown = false;
     private boolean rightDown = false;
 
     public static void register() {
@@ -146,7 +145,6 @@ public class MouseTracker implements ClientTickEvents.EndTick {
         if (mh.isMouseGrabbed()) {
             hoveredEntities = List.of();
             this.leftDown = false;
-            this.middleDown = false;
             this.rightDown = false;
             return;
         }
@@ -161,21 +159,16 @@ public class MouseTracker implements ClientTickEvents.EndTick {
 
         long windowHandle = minecraft.getWindow().handle();
         boolean left = GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
-        boolean middle = GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
         boolean right = GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
 
         if (this.leftDown && !left)
             MouseTrackerEntityClickUpCallback.EVENT.invoker()
                     .onClickUp(detectedEntities, ClickType.LEFT_CLICK, screenType);
-        if (this.middleDown && !middle)
-            MouseTrackerEntityClickUpCallback.EVENT.invoker()
-                    .onClickUp(detectedEntities, ClickType.MIDDLE_CLICK, screenType);
         if (this.rightDown && !right)
             MouseTrackerEntityClickUpCallback.EVENT.invoker()
                     .onClickUp(detectedEntities, ClickType.RIGHT_CLICK, screenType);
 
         this.leftDown = left;
-        this.middleDown = middle;
         this.rightDown = right;
     }
 }

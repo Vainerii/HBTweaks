@@ -10,7 +10,6 @@ import vai.hbtweaks.context.client.network.GiveItemToPlayerPayloads;
 // import vai.hbtweaks.context.client.render.BackItemCommand;
 import vai.hbtweaks.context.client.screen.CursorScreen;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.screens.ChatScreen;
@@ -19,7 +18,6 @@ import vai.hbtweaks.context.client.clientinfo.ClientInfoBank;
 import vai.hbtweaks.context.client.config.HBConfig;
 import vai.hbtweaks.context.client.listeners.ContextMenuTrigger;
 import vai.hbtweaks.context.client.listeners.LookAtInfoBox;
-import vai.hbtweaks.context.client.listeners.SendMessageTrigger;
 import vai.hbtweaks.context.client.keyboard.WritingStatusSender;
 import vai.hbtweaks.context.client.network.ClientInfoPayloads;
 import vai.hbtweaks.context.client.network.EffectPayloads;
@@ -33,7 +31,6 @@ import java.io.File;
 public class HBTweaksContextClient implements ClientModInitializer {
 
 	private static final ContextMenuTrigger cmt = new ContextMenuTrigger();
-	private static final SendMessageTrigger smt = new SendMessageTrigger();
 
 	public static final boolean DEBUG_MODE = new File(".hbtweaks_debug").exists();
 
@@ -70,7 +67,6 @@ public class HBTweaksContextClient implements ClientModInitializer {
 		MouseTracker.register();
 		LayAssist.register();
 		MouseTrackerEntityClickUpCallback.EVENT.register(cmt);
-		MouseTrackerEntityClickUpCallback.EVENT.register(smt);
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			while (CURSOR_KEY.consumeClick()) {
 				if (client.screen == null && client.player != null)
@@ -81,10 +77,6 @@ public class HBTweaksContextClient implements ClientModInitializer {
 		ScreenEvents.BEFORE_INIT.register((_, screen, _, _) -> {
 			if (screen instanceof ChatScreen || screen instanceof CursorScreen) {
 				ScreenMouseEvents.afterMouseClick(screen).register(cmt);
-				ScreenKeyboardEvents.afterKeyPress(screen).register((_, keyEvent) -> {
-					if (keyEvent.key() == GLFW.GLFW_KEY_DELETE)
-						ContextMenuTrigger.handleDelete();
-				});
 				ScreenEvents.afterExtract(screen).register((_, graphics, _, _, _) -> {
 					cmt.renderOnScreen(graphics, DeltaTracker.ZERO);
 				});
