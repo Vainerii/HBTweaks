@@ -26,11 +26,13 @@ import vai.hbtweaks.context.client.config.ModMenuIntegration;
 import vai.hbtweaks.context.client.contextmenu.editor.AddCommandScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.AddScriptScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.AddSubmenuScreen;
+import vai.hbtweaks.context.client.contextmenu.editor.MenuFiles;
 import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
 import vai.hbtweaks.context.client.listeners.ContextMenuTrigger;
 import vai.hbtweaks.context.client.script.ScriptRunner;
 
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.UUID;
 
 public class ContextMenu {
@@ -44,12 +46,13 @@ public class ContextMenu {
     private static final int COLOR_HOVER = 0xFF2255AA;
     private static final int COLOR_BORDER = 0xFF3A3A3A;
     private static final int COLOR_TOGGLE_BG = 0xFF2A2A2A;
+    private static final int COLOR_HINT_BG = 0xE0000000;
 
     private static final int TOGGLE_SIZE = 9;
     private static final int TOGGLE_GAP = 1;
 
     private static final int EDIT_CELL = 8;
-    private static final int EDIT_CLUSTER_W = EDIT_CELL * 3;
+    private static final int EDIT_CLUSTER_W = EDIT_CELL * 4;
 
     // Vanilla book page size
     private static final int NOTE_WIDTH = 114;
@@ -60,7 +63,7 @@ public class ContextMenu {
     private NoteBlock noteBlock = null;
     private boolean rootMenu = false;
 
-    private enum EditControl { UP, DOWN, INTO, TO_PARENT, EDIT, DELETE }
+    private enum EditControl { UP, DOWN, INTO, TO_PARENT, EDIT, DELETE, EXPORT }
 
     private final boolean minimalStyle;
 
@@ -105,7 +108,11 @@ public class ContextMenu {
     }
 
     public ContextMenu addActionItem(Component label, Runnable action) {
-        return push(new ActionItem(label, action));
+        return push(new ActionItem(label, action, false));
+    }
+
+    public ContextMenu addStayOpenActionItem(Component label, Runnable action) {
+        return push(new ActionItem(label, action, true));
     }
 
     private ContextMenu push(MenuItem item) {
@@ -137,6 +144,7 @@ public class ContextMenu {
             Minecraft mc = Minecraft.getInstance();
             mc.setScreen(new AddScriptScreen(mc.screen, container));
         });
+        sub.addActionItem(Component.translatable("hbtweaks.context.editor.import"), () -> MenuFiles.importInto(container));
         return push(new AddMenuItem(
                 Component.translatable("hbtweaks.context.editor.add").withStyle(ChatFormatting.GREEN), sub));
     }
@@ -488,6 +496,34 @@ public class ContextMenu {
         if (this.openSubmenu != null) {
             this.openSubmenu.render(graphics, mouseX, mouseY, tickDelta);
         }
+
+        Component hint = editHint(mouseX, mouseY);
+        if (hint != null)
+            drawHint(graphics, mc, hint, mouseX, mouseY);
+    }
+
+    private Component editHint(int mouseX, int mouseY) {
+        if (!editMode) return null;
+        for (int i = 0; i < effectiveItemCount(); i++) {
+            EditControl ctrl = hitEditControl(mouseX, mouseY, i);
+            if (ctrl != null)
+                return Component.translatable("hbtweaks.context.editor.legend." + ctrl.name().toLowerCase(Locale.ROOT));
+            if (isHideable(i) && isInsideEye(mouseX, mouseY, i, this.y + i * itemHeight())) {
+                boolean hidden = i < this.hiddenFlags.length ? this.hiddenFlags[i] : isHidden(this.items.get(i));
+                return Component.translatable(hidden ? "hbtweaks.context.editor.hint.show" : "hbtweaks.context.editor.hint.hide");
+            }
+        }
+        return null;
+    }
+
+    private static void drawHint(GuiGraphicsExtractor graphics, Minecraft mc, Component text, int mouseX, int mouseY) {
+        graphics.nextStratum();
+        int w = mc.font.width(text) + 4;
+        int h = mc.font.lineHeight + 3;
+        int hx = Math.min(mouseX + 8, mc.getWindow().getGuiScaledWidth() - w - 1);
+        int hy = Math.min(mouseY + 8, mc.getWindow().getGuiScaledHeight() - h - 1);
+        graphics.fill(hx, hy, hx + w, hy + h, ContextMenu.COLOR_HINT_BG);
+        graphics.text(mc.font, text, hx + 2, hy + 2, ContextMenu.COLOR_TEXT, false);
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -547,7 +583,7 @@ public class ContextMenu {
                                 SimpleSoundInstance.forUI(SoundEvents.BOOK_PAGE_TURN, 1.0F));
                     return false; // Keep the menu open
                 }
-                if (item instanceof CheckboxItem) {
+                if (item instanceof CheckboxItem || item instanceof ActionItem a && a.keepOpen) {
                     item.onClick();
                     return false; // Keep the menu open
                 }
@@ -634,7 +670,8 @@ public class ContextMenu {
         int half = itemHeight() / 2;
         boolean col0 = mx >= cx && mx < cx + EDIT_CELL;
         boolean col1 = mx >= cx + EDIT_CELL && mx < cx + 2 * EDIT_CELL;
-        boolean col2 = mx >= cx + 2 * EDIT_CELL && mx < cx + EDIT_CLUSTER_W;
+        boolean col2 = mx >= cx + 2 * EDIT_CELL && mx < cx + 3 * EDIT_CELL;
+        boolean col3 = mx >= cx + 3 * EDIT_CELL && mx < cx + EDIT_CLUSTER_W;
         boolean top = my >= itemY && my < itemY + half;
         boolean bot = my >= itemY + half && my < itemY + itemHeight();
         if (col0 && top) return canMoveInto(i) ? EditControl.INTO : null;
@@ -643,6 +680,7 @@ public class ContextMenu {
         if (col1 && bot) return canMoveDown(i) ? EditControl.DOWN : null;
         if (col2 && top) return isEditable(i) ? EditControl.EDIT : null;
         if (col2 && bot) return EditControl.DELETE;
+        if (col3 && top) return EditControl.EXPORT;
         return null;
     }
 
@@ -666,10 +704,12 @@ public class ContextMenu {
                 isEditable(i) ? EDIT_ICON : EDIT_ICON_DISABLED);
         drawIcon(graphics, ICON_DELETE, cx + 2 * EDIT_CELL, itemY + half, half, hover == EditControl.DELETE,
                 EDIT_ICON_DELETE);
+        drawIcon(graphics, ICON_EXPORT, cx + 3 * EDIT_CELL, itemY, half, hover == EditControl.EXPORT,
+                EDIT_ICON);
     }
 
     private int eyeX(int i) {
-        return editClusterX(i) + 2 * EDIT_CELL;
+        return editClusterX(i) + EDIT_CLUSTER_W - EDIT_CELL;
     }
 
     private int eyeY(int itemY) {
@@ -729,6 +769,7 @@ public class ContextMenu {
     private static final Identifier ICON_VISIBLE = icon("visible");
     private static final Identifier ICON_HIDDEN = icon("hidden");
     private static final Identifier ICON_SETTINGS = icon("settings");
+    private static final Identifier ICON_EXPORT = icon("export");
 
     private void drawSubmenuArrow(GuiGraphicsExtractor graphics, int itemY, boolean besideCluster) {
         int size = Math.min(itemHeight() - 4, 7);
@@ -747,7 +788,7 @@ public class ContextMenu {
     }
 
     private static final Identifier[] LEGEND_ICONS =
-            { ICON_INTO, ICON_TO_PARENT, ICON_UP, ICON_DOWN, ICON_EDIT, ICON_DELETE };
+            { ICON_INTO, ICON_TO_PARENT, ICON_UP, ICON_DOWN, ICON_EDIT, ICON_DELETE, ICON_EXPORT };
     private static final String[] LEGEND_KEYS = {
             "hbtweaks.context.editor.legend.into",
             "hbtweaks.context.editor.legend.to_parent",
@@ -755,11 +796,12 @@ public class ContextMenu {
             "hbtweaks.context.editor.legend.down",
             "hbtweaks.context.editor.legend.edit",
             "hbtweaks.context.editor.legend.delete",
+            "hbtweaks.context.editor.legend.export",
     };
 
     // Idk what other tint can be good
     private static final int[] LEGEND_TINT =
-            { EDIT_ICON, EDIT_ICON, EDIT_ICON, EDIT_ICON, EDIT_ICON, EDIT_ICON_DELETE };
+            { EDIT_ICON, EDIT_ICON, EDIT_ICON, EDIT_ICON, EDIT_ICON, EDIT_ICON_DELETE, EDIT_ICON };
 
     // Bottom-right legend fir edit mode
     public static void renderEditLegend(GuiGraphicsExtractor graphics) {
@@ -802,6 +844,7 @@ public class ContextMenu {
                 case TO_PARENT -> { ref.container().moveToParent(ref.index()); ContextMenuTrigger.rebuildAfterEdit(); }
                 case EDIT -> ContextMenuTrigger.requestEdit(ref);
                 case DELETE -> ContextMenuTrigger.requestDelete(ref);
+                case EXPORT -> MenuFiles.exportEntry(ref.container().entryAt(ref.index()));
             }
             return true;
         }
@@ -842,10 +885,12 @@ public class ContextMenu {
     private static final class ActionItem implements MenuItem {
         private final Component label;
         private final Runnable action;
+        private final boolean keepOpen;
 
-        ActionItem(Component label, Runnable action) {
+        ActionItem(Component label, Runnable action, boolean keepOpen) {
             this.label = label;
             this.action = action;
+            this.keepOpen = keepOpen;
         }
 
         @Override

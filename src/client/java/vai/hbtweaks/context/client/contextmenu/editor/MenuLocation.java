@@ -90,6 +90,10 @@ public final class MenuLocation {
         });
     }
 
+    public void addEntries(List<Map<String, Object>> entries) {
+        edit(root -> resolve(root).addAll(entries));
+    }
+
     public void deleteAt(int index) {
         edit(root -> {
             List<Map<String, Object>> list = resolve(root);

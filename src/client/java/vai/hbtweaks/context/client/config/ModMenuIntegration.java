@@ -27,7 +27,7 @@ public class ModMenuIntegration implements ModMenuApi {
     private static final Component o_menu_style = Component.translatable("hbtweaks.context.config.menu_style");
     private static final Component o_menu_style_tt = Component.translatable("hbtweaks.context.config.menu_style.tooltip");
 
-    private static final Component o_lay = Component.translatable("hbtweaks.context.config.lay_assist");
+    private static final Component o_lay =Component.translatable("hbtweaks.context.config.lay_assist");
     private static final Component o_lay_tt = Component.translatable("hbtweaks.context.config.lay_assist.tooltip");
 
     private static final Component v_lay_off = Component.translatable("hbtweaks.context.config.lay_assist.off");

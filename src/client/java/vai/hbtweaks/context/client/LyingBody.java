@@ -29,6 +29,14 @@ public final class LyingBody {
         return null;
     }
 
+    public static @Nullable Player ownBody(Player player) {
+        for (Player p : player.level().players()) {
+            if (isBodyOf(p, player))
+                return p;
+        }
+        return null;
+    }
+
     public static boolean isBodyOf(Player body, Player player) {
         return body != player && isLying(body) && player.position().distanceToSqr(body.position()) < 0.01;
     }

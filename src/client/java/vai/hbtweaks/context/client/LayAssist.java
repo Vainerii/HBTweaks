@@ -64,7 +64,7 @@ public final class LayAssist {
     private static void tick(Minecraft mc) {
         LayAssistMode mode = HBConfig.get().layAssist;
         LocalPlayer me = mc.player;
-        Player body = me == null || mode == LayAssistMode.OFF ? null : ownBody(me);
+        Player body = me == null || mode == LayAssistMode.OFF ? null : LyingBody.ownBody(me);
         if (body == null) {
             exit(mc);
             return;
@@ -87,14 +87,6 @@ public final class LayAssist {
             overshoot = aligning ? Math.signum(diff) * MAX_HEAD_TURN : 0.0F;
         }
         sendRotation(me);
-    }
-
-    private static @Nullable Player ownBody(LocalPlayer me) {
-        for (Player p : me.level().players()) {
-            if (LyingBody.isBodyOf(p, me))
-                return p;
-        }
-        return null;
     }
 
     private static void enter(Minecraft mc, LocalPlayer me, boolean startFrozen) {

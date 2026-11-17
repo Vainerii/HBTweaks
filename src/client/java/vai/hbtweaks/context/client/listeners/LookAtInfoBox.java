@@ -12,9 +12,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import vai.hbtweaks.context.client.LyingBody;
 import vai.hbtweaks.context.client.Util;
 import vai.hbtweaks.context.client.config.HBConfig;
 
@@ -178,15 +178,23 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
             double bestDist = Double.MAX_VALUE;
             for (Player p : camera.level().players()) {
                 if (p == camera || p == mc.player) continue;
-                if (!isReal(p)) continue;
-                if (p.isSpectator() || !p.isPickable() || p.isInvisible()) continue;
-                AABB box = p.getBoundingBox().inflate(p.getPickRadius());
-                Optional<Vec3> hit = box.clip(eye, end);
+                Player target = p;
+                Optional<Vec3> hit;
+                if (LyingBody.isLying(p)) {
+                    // The LyingBody is just a fake one
+                    target = LyingBody.owner(p);
+                    if (target == null || target == mc.player) continue;
+                    hit = LyingBody.clip(p, eye, end);
+                } else {
+                    if (!isReal(p)) continue;
+                    if (p.isSpectator() || !p.isPickable() || p.isInvisible()) continue;
+                    hit = p.getBoundingBox().inflate(p.getPickRadius()).clip(eye, end);
+                }
                 if (hit.isEmpty()) continue;
                 double d = eye.distanceToSqr(hit.get());
                 if (d < bestDist) {
                     bestDist = d;
-                    best = p;
+                    best = target;
                 }
             }
             if (best == null)

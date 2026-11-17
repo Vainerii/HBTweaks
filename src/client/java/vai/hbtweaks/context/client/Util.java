@@ -135,6 +135,7 @@ public class Util {
             if (me == null) return false;
             PlayerInfo pi = me.connection.getPlayerInfo(id);
             if (pi == null) return false;
+            if (!me.connection.getListedOnlinePlayers().contains(pi)) return false;
             Component tabName = pi.getTabListDisplayName();
             if (tabName == null || tabName.getString().isEmpty()) return false;
             KNOWN_REAL.add(id);

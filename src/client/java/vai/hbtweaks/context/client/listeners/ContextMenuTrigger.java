@@ -48,6 +48,8 @@ import vai.hbtweaks.context.client.mouse.ScreenType;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -62,6 +64,9 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     private static UUID effectsRequestedFor = null;
 
     private static ContextMenuTrigger instance;
+
+    private static final double NEARBY_RANGE = 50.0;
+    private static final long HIGHLIGHT_MILLIS = 1000;
 
     public ContextMenuTrigger() {
         instance = this;
@@ -158,7 +163,8 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         context.addInfoItem(Component.literal("Vous-même").withStyle(ChatFormatting.GRAY));
 
         ContextMenu emotes = new ContextMenu(0, 0, self);
-        emotes.addCommandItem("S'allonger", "lay");
+        // /lay again stands back up.
+        emotes.addCommandItem(LyingBody.ownBody(self) != null ? "Se relever" : "S'allonger", "lay");
         emotes.addCommandItem("S'asseoir", "sit");
         emotes.addCommandItem("Menu d'émote", "emote");
         context.addSubmenuItem("Emotes", emotes);
@@ -234,7 +240,8 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
                     HBConfig.HANDLER.save();
                 }
             });*/
-            context.addSubmenuItem("Options", options);
+            options.addSubmenuItem("Joueurs proches", makeNearbyPlayersMenu(self));
+            context.addSubmenuItem("Encadrement", options);
         }
 
         if (ContextMenuTrigger.customMenuSelf != null)
@@ -248,6 +255,27 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         context.asRootMenu();
 
         return context;
+    }
+
+    private static ContextMenu makeNearbyPlayersMenu(Player self) {
+        ContextMenu menu = new ContextMenu(0, 0, self);
+        List<Player> nearby = new ArrayList<>();
+        for (Player p : self.level().players()) {
+            if (p != self && isReal(p) && self.distanceTo(p) <= NEARBY_RANGE)
+                nearby.add(p);
+        }
+        nearby.sort(Comparator.comparingDouble(self::distanceTo));
+        if (nearby.isEmpty())
+            menu.addInfoItem(Component.literal("[AUCUN]").withStyle(ChatFormatting.GRAY));
+        for (Player p : nearby) {
+            Component name = Util.getRpName(p);
+            Component label = Util.getHead(p).copy()
+                    .append(name == null ? p.getName() : name)
+                    .append(Component.literal(" (" + Math.round(self.distanceTo(p)) + " m)").withStyle(ChatFormatting.GRAY));
+            UUID uuid = p.getUUID();
+            menu.addStayOpenActionItem(label, () -> PlayerOutline.highlight(uuid, System.currentTimeMillis() + HIGHLIGHT_MILLIS));
+        }
+        return menu;
     }
 
     private static Player firstVisiblePlayer(List<Entity> entities) {
